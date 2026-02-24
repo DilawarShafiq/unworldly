@@ -18,7 +18,7 @@ export function ensureSessionsDir(baseDir: string): string {
 
 export function createSession(directory: string): Session {
   return {
-    version: '0.1.0',
+    version: '0.2.0',
     id: generateId(),
     startTime: new Date().toISOString(),
     endTime: '',

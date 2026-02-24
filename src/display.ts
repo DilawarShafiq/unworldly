@@ -8,9 +8,10 @@ const RISK_ICONS: Record<RiskLevel, string> = {
 };
 
 const EVENT_ICONS: Record<EventType, string> = {
-  create: chalk.green('CREATE'),
-  modify: chalk.blue('MODIFY'),
-  delete: chalk.red('DELETE'),
+  create: chalk.green('CREATE '),
+  modify: chalk.blue('MODIFY '),
+  delete: chalk.red('DELETE '),
+  command: chalk.magenta('$> CMD '),
 };
 
 export function banner(): string {

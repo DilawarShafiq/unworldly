@@ -2,6 +2,9 @@ import path from 'node:path';
 import chokidar from 'chokidar';
 import type { EventType, Session, WatchEvent } from './types.js';
 import { assessRisk, shouldIgnore } from './risk.js';
+import { assessCommandRisk } from './command-risk.js';
+import { createCommandMonitor } from './command-monitor.js';
+import { loadConfig } from './config.js';
 import { addEvent, createSession, saveSession, ensureSessionsDir } from './session.js';
 import { banner, formatEvent, sessionSummary, watchHeader } from './display.js';
 
@@ -71,12 +74,41 @@ export async function watch(directory: string): Promise<void> {
   watcher.on('change', (p) => handleEvent('change', p));
   watcher.on('unlink', (p) => handleEvent('unlink', p));
 
+  // Load user config for command risk overrides
+  const config = loadConfig(absDir);
+
+  // Start command monitor
+  const cmdMonitor = createCommandMonitor();
+  if (cmdMonitor) {
+    cmdMonitor.start(absDir, (cmd) => {
+      const { level, reason } = assessCommandRisk(cmd.executable, cmd.args, config.commands);
+      const now = new Date();
+      const commandStr = [cmd.executable, ...cmd.args].join(' ');
+
+      const event: WatchEvent = {
+        timestamp: now.toISOString(),
+        type: 'command',
+        path: commandStr,
+        risk: level,
+        reason,
+        command: cmd,
+      };
+
+      addEvent(session, event);
+      console.log(formatEvent(formatTime(now), 'command', commandStr, level, reason));
+      saveSession(session, absDir);
+    });
+  } else {
+    console.log('  ⚠ Process monitoring unavailable — tracking file changes only');
+  }
+
   // Pre-create session dir and save initial empty session
   ensureSessionsDir(absDir);
   saveSession(session, absDir);
 
   // Graceful shutdown
   const shutdown = async () => {
+    if (cmdMonitor) cmdMonitor.stop();
     await watcher.close();
     const sessionPath = saveSession(session, absDir);
     console.log(sessionSummary(session.summary, sessionPath));
