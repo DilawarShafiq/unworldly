@@ -1,50 +1,54 @@
 # Unworldly
 
+[![CI](https://github.com/DilawarShafiq/unworldly/actions/workflows/ci.yml/badge.svg)](https://github.com/DilawarShafiq/unworldly/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/unworldly-recorder.svg)](https://www.npmjs.com/package/unworldly-recorder)
+[![npm downloads](https://img.shields.io/npm/dm/unworldly-recorder.svg)](https://www.npmjs.com/package/unworldly-recorder)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![ISO 42001](https://img.shields.io/badge/ISO_42001-Compliant-blue.svg)](https://www.iso.org/standard/81230.html)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg)](https://www.typescriptlang.org/)
+
+**The flight recorder for AI agents.** Records everything AI agents do on your system — file changes AND shell commands — replays sessions like a DVR, flags dangerous behavior in real-time, and produces tamper-proof, ISO 42001-compliant audit trails.
 
 > You wouldn't run code without logs. Why are you running AI agents without a black box?
 
-The flight recorder for AI agents. Records everything AI agents do on your system — **file changes AND shell commands** — replays sessions like a DVR, flags dangerous behavior in real-time, and produces **tamper-proof, ISO 42001-compliant audit trails**.
-
-Works with **any** agent — Claude Code, Cursor, Devin, OpenClaw, Copilot, Windsurf, Aider, Cline, or your custom agents. Agent-agnostic. Local-first. Zero cloud.
-
-## Install
-
 ```bash
 npm install -g unworldly-recorder
+unworldly watch
+# That's it. Every file change and shell command is now recorded.
 ```
 
-Or run directly:
+## Why Unworldly?
+
+AI agents are going autonomous. They edit files, run commands, install packages, access credentials — and **nobody is watching**. You finish a session and have no idea what actually happened. That's insane.
+
+**Unworldly watches everything so you don't have to.**
+
+- Works with **any** agent — Claude Code, Cursor, Devin, Copilot, Windsurf, Aider, OpenClaw, Cline
+- **Zero interference** — passive monitoring, never slows down your agent
+- **Local-first** — your data never leaves your machine. Zero cloud. Zero telemetry
+- **Tamper-proof** — SHA-256 hash chain on every event. If someone edits the logs, the chain breaks
+- **ISO 42001 compliant** — the audit trail standard for AI management systems
+
+## Quick Start
 
 ```bash
-npx unworldly-recorder watch
-```
+# Install globally
+npm install -g unworldly-recorder
 
-## The Problem
-
-AI agents are going autonomous. They edit your files, run commands, install packages, access credentials — and **nobody is watching**. You have no idea what they actually did. That's insane.
-
-ISO 42001 (AI Management Systems) requires organizations to maintain defensible audit trails for AI activity. HIPAA requires WHO/WHAT/WHEN/WHERE/WHY for every system action. Unworldly gives you both — automatically.
-
-## What Unworldly Does
-
-```bash
-# Start recording while any AI agent runs
+# Start recording (run this BEFORE your AI agent)
 unworldly watch
 
-# Replay exactly what happened
+# In another terminal, run your AI agent normally
+# Claude Code, Cursor, Copilot — anything
+
+# When done, replay what happened
 unworldly replay
 
 # Generate a security audit report
-unworldly report
+unworldly report --format md
 
-# Verify session integrity (tamper detection)
+# Verify nobody tampered with the session
 unworldly verify
-
-# List all recorded sessions
-unworldly list
 ```
 
 ## Live Output
@@ -77,44 +81,47 @@ unworldly list
   Risk Score: 7.2/10
 ```
 
+## How It Differs
+
+| Feature | Unworldly | AgentOps | SecureClaw | Manual Logging |
+|---------|-----------|----------|------------|----------------|
+| Agent-agnostic | Any agent | Python SDK only | OpenClaw only | Per-agent setup |
+| File monitoring | Real-time | No | Audit only | Manual |
+| Command capture | Real-time | No | Pattern scan | Manual |
+| Tamper-proof logs | SHA-256 hash chain | No | No | No |
+| ISO 42001 compliant | Yes | No | Partial | No |
+| Local-first / zero cloud | Yes | Cloud dashboard | Yes | Depends |
+| Setup time | 1 command | SDK integration | Config required | Hours |
+| Agent identity detection | Automatic | N/A | N/A | Manual |
+
 ## Features
 
-- **Watch** — Passive filesystem + process monitoring. Zero interference with the agent.
-- **Command Detection** — Captures shell commands (npm install, curl, rm -rf, sudo) alongside file changes.
-- **Agent Identity** — Automatically detects which AI agent is running (Claude Code, Cursor, Copilot, Devin, Windsurf, Aider, OpenClaw, Cline).
-- **Risk Engine** — Scores every action: credential access, destructive commands, unknown network calls, mass deletions.
-- **Tamper-Proof Logs** — SHA-256 hash chain on every event. If anyone modifies a session log, the chain breaks.
-- **Verify** — Cryptographic integrity verification of any session. Detects tampering instantly.
-- **Replay** — Step through every action with a beautiful terminal UI, color-coded by risk.
-- **Report** — Generate terminal or markdown security reports with integrity verification and agent identity.
-- **Configurable** — Custom risk patterns via `.unworldly/config.json` allowlist/blocklist.
-- **Agent-agnostic** — Doesn't care what agent is running. Just watches.
-- **Local-only** — Your data never leaves your machine. Zero telemetry.
+- **Watch** — Passive filesystem + process monitoring. Zero interference with the agent
+- **Command Detection** — Captures shell commands (npm install, curl, rm -rf, sudo) alongside file changes
+- **Agent Identity** — Auto-detects which AI agent is running (8 agents supported)
+- **Risk Engine** — Scores every action: credential access, destructive commands, network calls, mass deletions
+- **Tamper-Proof Logs** — SHA-256 hash chain on every event. Modify one event and the chain breaks
+- **Verify** — Cryptographic integrity verification. Exit code tells you if the session was tampered with
+- **Replay** — Step through every action with a color-coded terminal UI
+- **Report** — Generate terminal or markdown security reports with integrity verification
+- **Configurable** — Custom risk patterns via `.unworldly/config.json` allowlist/blocklist
+- **Cross-platform** — macOS, Linux, Windows. Runs anywhere Node.js runs
 
 ## ISO 42001 Compliance
 
-Unworldly implements key controls from the ISO 42001 AI Management System standard:
+Unworldly implements key controls from the [ISO 42001 AI Management System](https://www.iso.org/standard/81230.html) standard:
 
-| ISO 42001 Control | Unworldly Feature |
-|-------------------|-------------------|
-| **A.3.2** Roles & accountability | Agent identity detection — records WHO |
-| **A.6.2.8** Event logging | Hash-chained event logs — records WHAT/WHEN/WHERE |
-| **A.8** Transparency | Full session replay + markdown reports |
-| **A.9** Accountability | Tamper-proof integrity verification |
-
-### Verify Session Integrity
+| ISO 42001 Control | What It Requires | Unworldly Implementation |
+|-------------------|------------------|--------------------------|
+| **A.3.2** Roles & accountability | Know WHO is acting | Auto-detects agent identity |
+| **A.6.2.8** Event logging | Defensible audit logs | SHA-256 hash-chained events |
+| **A.8** Transparency | Observable AI behavior | Full session replay + reports |
+| **A.9** Accountability | Tamper-evident records | Cryptographic verify command |
 
 ```bash
-# Verify the latest session hasn't been tampered with
+# Verify session integrity — exit 0 = valid, exit 1 = tampered
 unworldly verify
 
-# Verify a specific session
-unworldly verify abc123
-
-# Exit code 0 = valid, 1 = tampered
-```
-
-```
   Integrity Verification
   ────────────────────────────
 
@@ -123,20 +130,22 @@ unworldly verify abc123
     Session seal is intact — no tampering detected
 ```
 
-### Agent Detection
+## Agent Detection
 
-Unworldly automatically identifies the AI agent modifying your system:
+Automatically identifies the AI agent modifying your system:
 
 | Agent | Detection Method |
 |-------|-----------------|
-| Claude Code | `CLAUDE_CODE` env var, `claude` process |
-| Cursor | `CURSOR_SESSION` env var, `Cursor` process |
-| GitHub Copilot | `GITHUB_COPILOT` env var |
-| Windsurf | `WINDSURF_SESSION` env var |
-| Devin | `DEVIN_SESSION` env var |
-| Aider | `AIDER_MODEL` env var |
-| OpenClaw | `OPENCLAW_SESSION` env var |
-| Cline | `CLINE_SESSION` env var |
+| Claude Code | `CLAUDE_CODE` env, `claude` process |
+| Cursor | `CURSOR_SESSION` env, `Cursor` process |
+| GitHub Copilot | `GITHUB_COPILOT` env |
+| Windsurf | `WINDSURF_SESSION` env |
+| Devin | `DEVIN_SESSION` env |
+| Aider | `AIDER_MODEL` env |
+| OpenClaw | `OPENCLAW_SESSION` env |
+| Cline | `CLINE_SESSION` env |
+
+Don't see your agent? [Open an issue](https://github.com/DilawarShafiq/unworldly/issues/new) or add it yourself — it's one entry in `src/agent-detect.ts`.
 
 ## Risk Detection
 
@@ -154,8 +163,6 @@ Unworldly automatically identifies the AI agent modifying your system:
 
 ## Custom Risk Patterns
 
-Create `.unworldly/config.json` to customize:
-
 ```json
 {
   "commands": {
@@ -169,18 +176,30 @@ Create `.unworldly/config.json` to customize:
 }
 ```
 
+Save as `.unworldly/config.json` in your project root.
+
+## Roadmap
+
+- [ ] **MCP Server** — Expose Unworldly as a Model Context Protocol tool
+- [ ] **Web Dashboard** — Browser-based session viewer with search and filtering
+- [ ] **CI/CD Integration** — GitHub Action to audit AI-generated PRs
+- [ ] **PHI Detection** — HIPAA-specific patterns for healthcare environments
+- [ ] **Cost Tracking** — Estimate compute cost of agent sessions
+- [ ] **Plugin System** — Custom analyzers and reporters
+- [ ] **Real-time Alerts** — Webhook/Slack notifications on danger events
+
 ## Who Is This For?
 
-- **Developers** running AI agents on their codebase who want to know what actually happened
+- **Developers** running AI agents who want to know what actually happened
 - **Security teams** auditing AI agent behavior in enterprise environments
-- **Compliance officers** needing ISO 42001 / HIPAA audit trails for AI-assisted development
+- **Compliance officers** needing ISO 42001 / HIPAA audit trails
 - **Open-source maintainers** reviewing AI-generated pull requests
 - **Anyone** who believes AI agents should be observable and accountable
 
-## Tech
+## Contributing
 
-TypeScript, Node.js, zero cloud dependencies. SHA-256 cryptographic integrity. Runs anywhere Node runs.
+See [CONTRIBUTING.md](CONTRIBUTING.md). We welcome PRs — especially new agent detections, risk patterns, and platform fixes.
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
