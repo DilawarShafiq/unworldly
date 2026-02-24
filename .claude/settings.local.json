@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tail:*)",
+      "Bash(find:*)",
+      "WebSearch",
+      "Bash(which specifyplus 2>/dev/null || npx specifyplus --help 2>&1 | head -30 || npm list -g specifyplus 2>&1)",
+      "Bash(specifyplus:*)",
+      "Bash(head:*)",
+      "Bash(mkdir:*)",
+      "Bash(cd:*)",
+      "Bash(cd /c/Users/TechTiesIbrahim/unworldly && gh repo create unworldly --public --description \"The flight recorder for AI agents. Record, replay, and audit everything AI agents do on your system.\" --source . --push 2>&1)",
+      "Bash(cd /c/Users/TechTiesIbrahim/redteam-arena && gh repo create redteam-arena --public --description \"AI vs AI adversarial security testing platform. Red team agents attack, blue team agents defend. Fully automated.\" --source . --push 2>&1)",
+      "Bash(cd /c/Users/TechTiesIbrahim/code-provenance && gh repo create code-provenance --public --description \"Code fingerprinting engine. Detect AI-generated code, find stolen code, catch license violations, trace code lineage.\" --source . --push 2>&1)"
+    ]
+  }
+}
