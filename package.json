@@ -1,5 +1,5 @@
 {
-  "name": "unworldly",
+  "name": "unworldly-recorder",
   "version": "0.1.0",
   "description": "The flight recorder for AI agents. Record, replay, and audit everything AI agents do on your system.",
   "type": "module",
@@ -8,8 +8,18 @@
     "unworldly": "dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DilawarShafiq/unworldly.git"
+  },
+  "homepage": "https://github.com/DilawarShafiq/unworldly",
+  "bugs": {
+    "url": "https://github.com/DilawarShafiq/unworldly/issues"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "node --import tsx src/cli.ts",
@@ -28,7 +38,7 @@
     "ai-safety",
     "cybersecurity"
   ],
-  "author": "",
+  "author": "Dilawar Shafiq <dilawar@autosapien.com> (https://github.com/DilawarShafiq)",
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
