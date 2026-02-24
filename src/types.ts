@@ -1,6 +1,14 @@
 export type RiskLevel = 'safe' | 'caution' | 'danger';
 
-export type EventType = 'create' | 'modify' | 'delete';
+export type EventType = 'create' | 'modify' | 'delete' | 'command';
+
+export interface CommandInfo {
+  executable: string;
+  args: string[];
+  cwd: string;
+  pid: number;
+  exitCode?: number;
+}
 
 export interface WatchEvent {
   timestamp: string;
@@ -8,6 +16,7 @@ export interface WatchEvent {
   path: string;
   risk: RiskLevel;
   reason?: string;
+  command?: CommandInfo;
 }
 
 export interface SessionSummary {
