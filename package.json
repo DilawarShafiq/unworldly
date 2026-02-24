@@ -1,0 +1,21 @@
+{
+  "name": "unworldly",
+  "version": "0.1.0",
+  "description": "The flight recorder for AI agents. Record, replay, and audit everything AI agents do on your system.",
+  "main": "dist/index.js",
+  "bin": {
+    "unworldly": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/cli.ts",
+    "test": "vitest",
+    "lint": "eslint src/"
+  },
+  "keywords": ["ai", "agents", "security", "monitoring", "audit", "flight-recorder", "black-box", "devtools", "cli"],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
