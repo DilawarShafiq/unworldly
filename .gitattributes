@@ -1,0 +1,3 @@
+# Mark SDD framework files as vendored so GitHub shows TypeScript as primary language
+.specify/** linguist-vendored
+.claude/** linguist-vendored
