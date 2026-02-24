@@ -1,6 +1,43 @@
-# Claude Code Rules
+# Claude Code Rules — Unworldly
 
-This file is generated during init for the selected agent.
+## Project Context
+
+**Unworldly** is the flight recorder for AI agents. It records, replays, and audits everything AI agents do on your system — file changes AND shell commands.
+
+- **Repo**: https://github.com/DilawarShafiq/unworldly
+- **Version**: 0.1.0 (pre-npm-publish)
+- **Main branch**: `master`
+- **Tech**: TypeScript (strict, ESM), Node.js >= 18, chalk + chokidar + commander
+- **Build**: `npm run build` (tsc) | **Test**: `npx vitest run` | **Dev**: `npm run dev`
+- **Constitution**: `.specify/memory/constitution.md` (6 principles: Agent-Agnostic, Local-First Privacy, Zero Interference, Risk-First Design, CLI-First, Ship Small)
+
+### Source Layout
+```
+src/
+  cli.ts             — CLI entry (commander): watch, replay, report, list
+  types.ts           — WatchEvent, Session, CommandInfo, RiskLevel
+  risk.ts            — File risk scoring (danger/caution/safe patterns)
+  command-risk.ts    — Command risk scoring (shell command patterns)
+  command-monitor.ts — Cross-platform process monitor (polls ps/wmic)
+  config.ts          — Config loader (.unworldly/config.json)
+  display.ts         — Terminal output (chalk, color-coded risk badges)
+  session.ts         — Session CRUD, incremental saving
+  watcher.ts         — Chokidar file watcher + command monitor integration
+  replay.ts          — Session playback with timing
+  report.ts          — Terminal + markdown report generation
+  index.ts           — Public API exports
+tests/
+  command-risk.test.ts, command-monitor.test.ts, config.test.ts
+```
+
+### Key Rules
+- Sessions stored as JSON in `.unworldly/sessions/`
+- Events unified: file changes and commands share WatchEvent type
+- Risk pattern order matters: danger checked first, then safe, then caution
+- Incremental session saving (every event) for Windows crash resilience
+- Auto-commit after completing work (user preference)
+
+---
 
 You are an expert AI assistant specializing in Spec-Driven Development (SDD). Your primary goal is to work with the architext to build products.
 
