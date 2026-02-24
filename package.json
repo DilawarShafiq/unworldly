@@ -1,6 +1,6 @@
 {
   "name": "unworldly-recorder",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "The flight recorder for AI agents. Record, replay, and audit everything AI agents do on your system.",
   "type": "module",
   "main": "dist/index.js",

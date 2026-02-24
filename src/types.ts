@@ -17,6 +17,14 @@ export interface WatchEvent {
   risk: RiskLevel;
   reason?: string;
   command?: CommandInfo;
+  hash?: string;
+}
+
+export interface AgentInfo {
+  name: string;
+  pid?: number;
+  version?: string;
+  detectedVia: string;
 }
 
 export interface SessionSummary {
@@ -33,6 +41,8 @@ export interface Session {
   startTime: string;
   endTime: string;
   directory: string;
+  agent?: AgentInfo;
   events: WatchEvent[];
   summary: SessionSummary;
+  integrityHash?: string;
 }

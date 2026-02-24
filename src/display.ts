@@ -1,5 +1,6 @@
 import chalk from 'chalk';
-import type { EventType, RiskLevel, SessionSummary } from './types.js';
+import type { EventType, RiskLevel, SessionSummary, AgentInfo } from './types.js';
+import type { VerifyResult } from './integrity.js';
 
 const RISK_ICONS: Record<RiskLevel, string> = {
   safe: chalk.green('  safe  '),
@@ -18,7 +19,7 @@ export function banner(): string {
   const lines = [
     '',
     chalk.red.bold('  ╔═══════════════════════════════════════════════════╗'),
-    chalk.red.bold('  ║') + chalk.white.bold('  UNWORLDLY') + chalk.gray(' v0.1.0') + chalk.red.bold('                            ║'),
+    chalk.red.bold('  ║') + chalk.white.bold('  UNWORLDLY') + chalk.gray(' v0.3.0') + chalk.red.bold('                            ║'),
     chalk.red.bold('  ║') + chalk.gray('  The Flight Recorder for AI Agents') + chalk.red.bold('              ║'),
     chalk.red.bold('  ╚═══════════════════════════════════════════════════╝'),
     '',
@@ -101,4 +102,43 @@ export function replayHeader(sessionId: string, directory: string, startTime: st
 
 export function reportDivider(): string {
   return chalk.gray('─'.repeat(56));
+}
+
+export function agentBadge(agent: AgentInfo): string {
+  return [
+    chalk.cyan('  ◉ Agent Detected: ') + chalk.white.bold(agent.name),
+    chalk.gray(`    via ${agent.detectedVia}`),
+    '',
+  ].join('\n');
+}
+
+export function verifyDisplay(result: VerifyResult): string {
+  const lines: string[] = [
+    '',
+    chalk.white.bold('  Integrity Verification'),
+    chalk.gray('  ─'.repeat(28)),
+    '',
+  ];
+
+  if (result.valid) {
+    lines.push(chalk.green.bold('  ✓ SESSION INTEGRITY VERIFIED'));
+    lines.push(chalk.green(`    All ${result.totalEvents} events have valid hash chain`));
+    lines.push(chalk.green('    Session seal is intact — no tampering detected'));
+  } else {
+    lines.push(chalk.red.bold('  ✗ INTEGRITY VERIFICATION FAILED'));
+    lines.push('');
+    lines.push(`  Events verified: ${chalk.white(result.validEvents + '/' + result.totalEvents)}`);
+    if (result.brokenAt !== undefined) {
+      lines.push(chalk.red(`  Chain broken at event: #${result.brokenAt}`));
+    }
+    lines.push(`  Session hash: ${result.sessionHashValid ? chalk.green('✓ valid') : chalk.red('✗ invalid')}`);
+    lines.push('');
+    lines.push(chalk.red.bold('  Errors:'));
+    for (const error of result.errors) {
+      lines.push(chalk.red(`    • ${error}`));
+    }
+  }
+
+  lines.push('');
+  return lines.join('\n');
 }

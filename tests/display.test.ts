@@ -10,7 +10,7 @@ describe('display', () => {
 
     it('should contain version', () => {
       const output = banner();
-      expect(output).toContain('v0.1.0');
+      expect(output).toContain('v0.3.0');
     });
 
     it('should contain tagline', () => {

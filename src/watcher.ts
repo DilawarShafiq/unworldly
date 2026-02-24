@@ -6,7 +6,8 @@ import { assessCommandRisk } from './command-risk.js';
 import { createCommandMonitor } from './command-monitor.js';
 import { loadConfig } from './config.js';
 import { addEvent, createSession, saveSession, ensureSessionsDir } from './session.js';
-import { banner, formatEvent, sessionSummary, watchHeader } from './display.js';
+import { banner, formatEvent, sessionSummary, watchHeader, agentBadge } from './display.js';
+import { detectAgent } from './agent-detect.js';
 
 function formatTime(date: Date): string {
   return date.toLocaleTimeString('en-US', { hour12: false });
@@ -25,8 +26,17 @@ export async function watch(directory: string): Promise<void> {
   const absDir = path.resolve(directory);
   const session: Session = createSession(absDir);
 
+  // ISO 42001 A.3.2: Detect which AI agent is running
+  const agent = detectAgent();
+  if (agent) {
+    session.agent = agent;
+  }
+
   console.log(banner());
   console.log(watchHeader(absDir));
+  if (agent) {
+    console.log(agentBadge(agent));
+  }
 
   const watcher = chokidar.watch(absDir, {
     ignored: [

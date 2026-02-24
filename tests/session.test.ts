@@ -55,7 +55,7 @@ describe('session', () => {
   describe('createSession', () => {
     it('should create a session with correct structure', () => {
       const session = createSession('/test/dir');
-      expect(session.version).toBe('0.2.0');
+      expect(session.version).toBe('0.3.0');
       expect(session.id).toMatch(/^[0-9a-f]{8}$/);
       expect(session.startTime).toBeTruthy();
       expect(session.endTime).toBe('');

@@ -4,14 +4,16 @@ import { Command } from 'commander';
 import { watch } from './watcher.js';
 import { replay, listCommand } from './replay.js';
 import { report } from './report.js';
-import { getLatestSession } from './session.js';
+import { getLatestSession, loadSession } from './session.js';
+import { verifySession } from './integrity.js';
+import { banner, verifyDisplay } from './display.js';
 
 const program = new Command();
 
 program
   .name('unworldly')
   .description('The flight recorder for AI agents. Record, replay, and audit everything AI agents do on your system.')
-  .version('0.1.0');
+  .version('0.3.0');
 
 program
   .command('watch')
@@ -48,6 +50,23 @@ program
       process.exit(1);
     }
     await report(sessionPath, options);
+  });
+
+program
+  .command('verify')
+  .description('Verify integrity of a recorded session (tamper detection)')
+  .argument('[session]', 'Session ID or path (defaults to latest)')
+  .action(async (session: string | undefined) => {
+    const sessionPath = session ?? getLatestSession(process.cwd());
+    if (!sessionPath) {
+      console.error('No sessions found. Run `unworldly watch` first.');
+      process.exit(1);
+    }
+    const data = loadSession(sessionPath);
+    console.log(banner());
+    const result = verifySession(data);
+    console.log(verifyDisplay(result));
+    process.exit(result.valid ? 0 : 1);
   });
 
 program

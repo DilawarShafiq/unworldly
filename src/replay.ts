@@ -1,7 +1,8 @@
 import chalk from 'chalk';
 import type { Session } from './types.js';
 import { loadSession } from './session.js';
-import { banner, formatEvent, replayHeader, sessionSummary } from './display.js';
+import { verifySession } from './integrity.js';
+import { banner, formatEvent, replayHeader, sessionSummary, agentBadge, verifyDisplay } from './display.js';
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -20,6 +21,16 @@ export async function replay(
 
   console.log(banner());
   console.log(replayHeader(session.id, session.directory, session.startTime));
+  if (session.agent) {
+    console.log(agentBadge(session.agent));
+  }
+
+  // Show integrity status before replaying
+  const integrity = verifySession(session);
+  if (!integrity.valid) {
+    console.log(chalk.red.bold('  ⚠ WARNING: Session integrity check failed — events may have been tampered with'));
+    console.log('');
+  }
 
   if (session.events.length === 0) {
     console.log(chalk.gray('  No events recorded in this session.'));
@@ -90,11 +101,16 @@ export async function listCommand(baseDir: string): Promise<void> {
       hour: '2-digit', minute: '2-digit',
     });
 
+    const agentTag = session.agent ? chalk.cyan(` [${session.agent.name}]`) : '';
+    const integrityTag = session.integrityHash ? chalk.green(' ✓') : chalk.gray(' ○');
+
     console.log(
       `  ${chalk.white.bold(session.id)}` +
       `  ${chalk.gray(date)}` +
       `  ${chalk.gray(session.summary.totalEvents + ' events')}` +
-      `  Risk: ${riskColor(session.summary.riskScore + '/10')}`,
+      `  Risk: ${riskColor(session.summary.riskScore + '/10')}` +
+      integrityTag +
+      agentTag,
     );
   }
 

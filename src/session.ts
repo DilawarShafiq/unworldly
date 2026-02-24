@@ -3,6 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import type { Session, WatchEvent } from './types.js';
 import { calculateRiskScore } from './risk.js';
+import { signEvent, getLastHash, computeSessionHash } from './integrity.js';
 
 const SESSIONS_DIR = '.unworldly/sessions';
 
@@ -18,7 +19,7 @@ export function ensureSessionsDir(baseDir: string): string {
 
 export function createSession(directory: string): Session {
   return {
-    version: '0.2.0',
+    version: '0.3.0',
     id: generateId(),
     startTime: new Date().toISOString(),
     endTime: '',
@@ -35,6 +36,10 @@ export function createSession(directory: string): Session {
 }
 
 export function addEvent(session: Session, event: WatchEvent): void {
+  // Hash chain: sign event with previous hash for tamper-evidence
+  const previousHash = getLastHash(session);
+  signEvent(event, previousHash);
+
   session.events.push(event);
   session.summary.totalEvents++;
   session.summary[event.risk]++;
@@ -47,6 +52,8 @@ export function addEvent(session: Session, event: WatchEvent): void {
 
 export function saveSession(session: Session, baseDir: string): string {
   session.endTime = new Date().toISOString();
+  // Compute session-level integrity hash (seal the session)
+  session.integrityHash = computeSessionHash(session);
   const dir = ensureSessionsDir(baseDir);
   const filename = `${session.id}.json`;
   const filepath = path.join(dir, filename);
