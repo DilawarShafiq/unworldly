@@ -1,18 +1,18 @@
 # Unworldly
 
 [![CI](https://github.com/DilawarShafiq/unworldly/actions/workflows/ci.yml/badge.svg)](https://github.com/DilawarShafiq/unworldly/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/unworldly-recorder.svg)](https://www.npmjs.com/package/unworldly-recorder)
-[![npm downloads](https://img.shields.io/npm/dm/unworldly-recorder.svg)](https://www.npmjs.com/package/unworldly-recorder)
+[![PyPI version](https://img.shields.io/pypi/v/unworldly-recorder.svg)](https://pypi.org/project/unworldly-recorder/)
+[![PyPI downloads](https://img.shields.io/pypi/dm/unworldly-recorder.svg)](https://pypi.org/project/unworldly-recorder/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![ISO 42001](https://img.shields.io/badge/ISO_42001-Compliant-blue.svg)](https://www.iso.org/standard/81230.html)
-[![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg)](https://www.typescriptlang.org/)
+[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
 
 **The flight recorder for AI agents.** Records everything AI agents do on your system — file changes AND shell commands — replays sessions like a DVR, flags dangerous behavior in real-time, and produces tamper-proof, ISO 42001-compliant audit trails.
 
 > You wouldn't run code without logs. Why are you running AI agents without a black box?
 
 ```bash
-npm install -g unworldly-recorder
+pip install unworldly-recorder
 unworldly watch
 # That's it. Every file change and shell command is now recorded.
 ```
@@ -32,8 +32,8 @@ AI agents are going autonomous. They edit files, run commands, install packages,
 ## Quick Start
 
 ```bash
-# Install globally
-npm install -g unworldly-recorder
+# Install
+pip install unworldly-recorder
 
 # Start recording (run this BEFORE your AI agent)
 unworldly watch
@@ -105,7 +105,7 @@ unworldly verify
 - **Replay** — Step through every action with a color-coded terminal UI
 - **Report** — Generate terminal or markdown security reports with integrity verification
 - **Configurable** — Custom risk patterns via `.unworldly/config.json` allowlist/blocklist
-- **Cross-platform** — macOS, Linux, Windows. Runs anywhere Node.js runs
+- **Cross-platform** — macOS, Linux, Windows. Runs anywhere Python runs
 
 ## ISO 42001 Compliance
 
@@ -145,7 +145,7 @@ Automatically identifies the AI agent modifying your system:
 | OpenClaw | `OPENCLAW_SESSION` env |
 | Cline | `CLINE_SESSION` env |
 
-Don't see your agent? [Open an issue](https://github.com/DilawarShafiq/unworldly/issues/new) or add it yourself — it's one entry in `src/agent-detect.ts`.
+Don't see your agent? [Open an issue](https://github.com/DilawarShafiq/unworldly/issues/new) or add it yourself — it's one entry in `unworldly/agent_detect.py`.
 
 ## Risk Detection
 
