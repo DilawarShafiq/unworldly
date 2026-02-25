@@ -18,6 +18,7 @@ class MonitorConfig:
     """Top-level monitoring configuration."""
 
     commands: CommandRiskConfig = field(default_factory=CommandRiskConfig)
+    hipaa: bool = False
 
 
 def _default_config() -> MonitorConfig:
@@ -44,6 +45,7 @@ def load_config(base_dir: str) -> MonitorConfig:
                 allowlist=commands_data.get("allowlist", []),
                 blocklist=commands_data.get("blocklist", []),
             ),
+            hipaa=bool(parsed.get("hipaa", False)),
         )
     except Exception:
         print(

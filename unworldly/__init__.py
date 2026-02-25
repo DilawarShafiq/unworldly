@@ -9,6 +9,7 @@ from .agent_detect import detect_agent
 from .command_monitor import CommandMonitor, create_command_monitor
 from .command_risk import CommandRiskConfig, CommandRiskResult, assess_command_risk
 from .config import MonitorConfig, load_config
+from .hipaa_risk import assess_hipaa_command_risk, assess_hipaa_file_risk
 from .integrity import VerifyResult, compute_session_hash, genesis_hash, hash_event, verify_session
 from .replay import replay
 from .report import report
@@ -24,7 +25,7 @@ from .types import (
 )
 from .watcher import watch
 
-__version__ = "0.3.0"
+__version__ = "0.4.1"
 
 __all__ = [
     # Core functions
@@ -36,6 +37,8 @@ __all__ = [
     "calculate_risk_score",
     "should_ignore",
     "assess_command_risk",
+    "assess_hipaa_file_risk",
+    "assess_hipaa_command_risk",
     # Monitoring
     "CommandMonitor",
     "create_command_monitor",

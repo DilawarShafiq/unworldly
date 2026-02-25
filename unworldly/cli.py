@@ -19,7 +19,7 @@ from .watcher import watch
 
 
 @click.group()
-@click.version_option(version="0.3.0", prog_name="unworldly")
+@click.version_option(version="0.4.1", prog_name="unworldly")
 def cli() -> None:
     """The flight recorder for AI agents.
 
@@ -30,9 +30,10 @@ def cli() -> None:
 
 @cli.command()
 @click.argument("directory", default=".")
-def watch_cmd(directory: str) -> None:
+@click.option("--hipaa", is_flag=True, default=False, help="Enable HIPAA PHI detection patterns.")
+def watch_cmd(directory: str, hipaa: bool) -> None:
     """Start recording AI agent activity in the current directory."""
-    watch(directory)
+    watch(directory, hipaa=hipaa)
 
 
 # Register with the name "watch" instead of "watch_cmd"

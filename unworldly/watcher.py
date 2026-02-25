@@ -26,6 +26,7 @@ from .command_monitor import create_command_monitor
 from .command_risk import assess_command_risk
 from .config import load_config
 from .display import agent_badge, banner, format_event, session_summary, watch_header
+from .hipaa_risk import assess_hipaa_command_risk, assess_hipaa_file_risk
 from .risk import assess_risk, should_ignore
 from .session import add_event, create_session, ensure_sessions_dir, save_session
 from .types import CommandInfo, EventType, Session, WatchEvent
@@ -50,10 +51,11 @@ def _map_watchdog_event(event: FileSystemEvent) -> EventType | None:
 class _UnworldlyHandler(FileSystemEventHandler):
     """Watchdog event handler that records file changes."""
 
-    def __init__(self, abs_dir: str, session: Session) -> None:
+    def __init__(self, abs_dir: str, session: Session, hipaa: bool = False) -> None:
         super().__init__()
         self.abs_dir = abs_dir
         self.session = session
+        self.hipaa = hipaa
 
     def _handle(self, event: FileSystemEvent) -> None:
         if event.is_directory:
@@ -67,7 +69,12 @@ class _UnworldlyHandler(FileSystemEventHandler):
         if should_ignore(relative_path):
             return
 
-        risk_result = assess_risk(relative_path, event_type)
+        # HIPAA patterns checked first when enabled
+        risk_result = None
+        if self.hipaa:
+            risk_result = assess_hipaa_file_risk(relative_path, event_type)
+        if risk_result is None:
+            risk_result = assess_risk(relative_path, event_type)
         now = datetime.now(timezone.utc)
 
         watch_event = WatchEvent(
@@ -102,7 +109,7 @@ class _UnworldlyHandler(FileSystemEventHandler):
         self._handle(event)
 
 
-def watch(directory: str) -> None:
+def watch(directory: str, hipaa: bool = False) -> None:
     """Start recording AI agent activity in the given directory.
 
     Monitors file changes (create/modify/delete) and shell commands,
@@ -121,21 +128,33 @@ def watch(directory: str) -> None:
     if agent:
         print(agent_badge(agent))
 
+    # Load user config for command risk overrides
+    config = load_config(abs_dir)
+    # CLI --hipaa flag OR config file "hipaa": true
+    hipaa_enabled = hipaa or config.hipaa
+
+    if hipaa_enabled:
+        yellow = "\033[33m"
+        reset = "\033[0m"
+        print(f"  {yellow}⚕ HIPAA mode enabled — PHI detection patterns active{reset}")
+        print()
+
     # Set up watchdog observer
-    handler = _UnworldlyHandler(abs_dir, session)
+    handler = _UnworldlyHandler(abs_dir, session, hipaa=hipaa_enabled)
     observer = Observer()
     observer.schedule(handler, abs_dir, recursive=True)
     observer.start()
-
-    # Load user config for command risk overrides
-    config = load_config(abs_dir)
 
     # Start command monitor
     cmd_monitor = create_command_monitor()
     if cmd_monitor is not None:
 
         def _on_command(cmd: CommandInfo) -> None:
-            risk_result = assess_command_risk(cmd.executable, cmd.args, config.commands)
+            risk_result = None
+            if hipaa_enabled:
+                risk_result = assess_hipaa_command_risk(cmd.executable, cmd.args)
+            if risk_result is None:
+                risk_result = assess_command_risk(cmd.executable, cmd.args, config.commands)
             now = datetime.now(timezone.utc)
             command_str = " ".join([cmd.executable] + cmd.args)
 

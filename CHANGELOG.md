@@ -2,6 +2,18 @@
 
 All notable changes to Unworldly are documented here.
 
+## [0.4.1] - 2026-02-26
+
+### Added
+- **HIPAA PHI Detection**: Opt-in module for Protected Health Information detection in file paths and shell commands
+  - Covers HL7, FHIR (8 resource types), DICOM, CDA/C-CDA, X12 EDI (834/835/837/270/271), EHR exports, clinical reports
+  - Command patterns: SQL on patient tables, FHIR API calls, EHR vendor APIs, cloud healthcare APIs (Google, Azure), DB dumps, file copy/transfer
+  - Activate via `unworldly watch --hipaa` or `"hipaa": true` in config
+  - Satisfies HIPAA 45 CFR § 164.312(b) audit control requirements
+- 46 new tests for HIPAA PHI detection patterns (185 total)
+- DevOps improvements: ruff linting, mypy strict mode, pre-commit hooks, Dependabot, SECURITY.md
+- Demo GIF system (`demo/simulate.py`, `demo/render_cast.py`)
+
 ## [0.3.0] - 2026-02-25
 
 ### Added

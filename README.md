@@ -205,7 +205,7 @@ Save as `.unworldly/config.json` in your project root.
 - [ ] **MCP Server** — Expose Unworldly as a Model Context Protocol tool
 - [ ] **Web Dashboard** — Browser-based session viewer with search and filtering
 - [ ] **CI/CD Integration** — GitHub Action to audit AI-generated PRs
-- [ ] **PHI Detection** — HIPAA-specific patterns for healthcare environments
+- [x] **PHI Detection** — HIPAA-specific patterns for healthcare environments (`--hipaa`)
 - [ ] **Cost Tracking** — Estimate compute cost of agent sessions
 - [ ] **Plugin System** — Custom analyzers and reporters
 - [ ] **Real-time Alerts** — Webhook/Slack notifications on danger events
