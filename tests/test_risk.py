@@ -1,7 +1,6 @@
 """Tests for file risk assessment."""
 
-import pytest
-from unworldly.risk import should_ignore, assess_risk, calculate_risk_score
+from unworldly.risk import assess_risk, calculate_risk_score, should_ignore
 from unworldly.types import EventType, RiskLevel
 
 

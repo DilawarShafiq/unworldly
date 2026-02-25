@@ -11,7 +11,6 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from typing import Optional
 
 from .types import Session, WatchEvent
 
@@ -22,15 +21,18 @@ def hash_event(event: WatchEvent, previous_hash: str) -> str:
     This creates a tamper-evident chain -- modifying any event invalidates
     all subsequent hashes and the session integrity hash.
     """
-    payload = json.dumps({
-        "timestamp": event.timestamp,
-        "type": event.type.value if hasattr(event.type, 'value') else event.type,
-        "path": event.path,
-        "risk": event.risk.value if hasattr(event.risk, 'value') else event.risk,
-        "reason": event.reason,
-        "command": event.command.to_dict() if event.command else None,
-        "previousHash": previous_hash,
-    }, separators=(",", ":"))
+    payload = json.dumps(
+        {
+            "timestamp": event.timestamp,
+            "type": event.type.value if hasattr(event.type, "value") else event.type,
+            "path": event.path,
+            "risk": event.risk.value if hasattr(event.risk, "value") else event.risk,
+            "reason": event.reason,
+            "command": event.command.to_dict() if event.command else None,
+            "previousHash": previous_hash,
+        },
+        separators=(",", ":"),
+    )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
@@ -40,14 +42,17 @@ def compute_session_hash(session: Session) -> str:
     This is the "seal" on the session -- if any event was tampered with,
     this hash won't match on verification.
     """
-    payload = json.dumps({
-        "id": session.id,
-        "startTime": session.start_time,
-        "directory": session.directory,
-        "agent": session.agent.to_dict() if session.agent else None,
-        "eventHashes": [e.hash for e in session.events],
-        "summary": session.summary.to_dict(),
-    }, separators=(",", ":"))
+    payload = json.dumps(
+        {
+            "id": session.id,
+            "startTime": session.start_time,
+            "directory": session.directory,
+            "agent": session.agent.to_dict() if session.agent else None,
+            "eventHashes": [e.hash for e in session.events],
+            "summary": session.summary.to_dict(),
+        },
+        separators=(",", ":"),
+    )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
@@ -67,16 +72,17 @@ def get_last_hash(session: Session) -> str:
 
 def genesis_hash(session_id: str) -> str:
     """Genesis hash -- the starting point for the hash chain, derived from session ID."""
-    return hashlib.sha256(f"unworldly:genesis:{session_id}".encode("utf-8")).hexdigest()
+    return hashlib.sha256(f"unworldly:genesis:{session_id}".encode()).hexdigest()
 
 
 @dataclass
 class VerifyResult:
     """Result of session integrity verification."""
+
     valid: bool = True
     total_events: int = 0
     valid_events: int = 0
-    broken_at: Optional[int] = None
+    broken_at: int | None = None
     session_hash_valid: bool = False
     errors: list[str] = field(default_factory=list)
 
@@ -90,7 +96,7 @@ def verify_session(session: Session) -> VerifyResult:
     errors: list[str] = []
     previous_hash = genesis_hash(session.id)
     valid_events = 0
-    broken_at: Optional[int] = None
+    broken_at: int | None = None
 
     for i, event in enumerate(session.events):
         if event.hash is None:
@@ -116,9 +122,7 @@ def verify_session(session: Session) -> VerifyResult:
         expected_session_hash = compute_session_hash(session)
         session_hash_valid = session.integrity_hash == expected_session_hash
         if not session_hash_valid:
-            errors.append(
-                "Session integrity hash mismatch -- session metadata may have been tampered with"
-            )
+            errors.append("Session integrity hash mismatch -- session metadata may have been tampered with")
     else:
         errors.append("No session integrity hash present (legacy session format)")
 

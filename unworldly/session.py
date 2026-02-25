@@ -10,11 +10,10 @@ import json
 import os
 import secrets
 from datetime import datetime, timezone
-from typing import Optional
 
-from .types import Session, SessionSummary, WatchEvent
+from .integrity import compute_session_hash, get_last_hash, sign_event
 from .risk import calculate_risk_score
-from .integrity import sign_event, get_last_hash, compute_session_hash
+from .types import Session, SessionSummary, WatchEvent
 
 SESSIONS_DIR = ".unworldly/sessions"
 
@@ -94,7 +93,7 @@ def save_session(session: Session, base_dir: str) -> str:
 def load_session(session_path: str) -> Session:
     """Load a session from disk by path or ID."""
     resolved = resolve_session_path(session_path)
-    with open(resolved, "r", encoding="utf-8") as f:
+    with open(resolved, encoding="utf-8") as f:
         data = json.load(f)
     return Session.from_dict(data)
 
@@ -135,7 +134,7 @@ def list_sessions(base_dir: str) -> list[str]:
     return files
 
 
-def get_latest_session(base_dir: str) -> Optional[str]:
+def get_latest_session(base_dir: str) -> str | None:
     """Get the path to the most recent session, or None."""
     sessions = list_sessions(base_dir)
     if not sessions:

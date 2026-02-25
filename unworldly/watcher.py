@@ -11,25 +11,24 @@ import signal
 import sys
 import time
 from datetime import datetime, timezone
-from typing import Optional
 
-from watchdog.observers import Observer
 from watchdog.events import (
-    FileSystemEventHandler,
     FileCreatedEvent,
-    FileModifiedEvent,
     FileDeletedEvent,
+    FileModifiedEvent,
     FileSystemEvent,
+    FileSystemEventHandler,
 )
+from watchdog.observers import Observer
 
-from .types import EventType, Session, WatchEvent
-from .risk import assess_risk, should_ignore
-from .command_risk import assess_command_risk
-from .command_monitor import create_command_monitor
-from .config import load_config
-from .session import add_event, create_session, save_session, ensure_sessions_dir
-from .display import banner, format_event, session_summary, watch_header, agent_badge
 from .agent_detect import detect_agent
+from .command_monitor import create_command_monitor
+from .command_risk import assess_command_risk
+from .config import load_config
+from .display import agent_badge, banner, format_event, session_summary, watch_header
+from .risk import assess_risk, should_ignore
+from .session import add_event, create_session, ensure_sessions_dir, save_session
+from .types import CommandInfo, EventType, Session, WatchEvent
 
 
 def _format_time(dt: datetime) -> str:
@@ -37,7 +36,7 @@ def _format_time(dt: datetime) -> str:
     return dt.strftime("%H:%M:%S")
 
 
-def _map_watchdog_event(event: FileSystemEvent) -> Optional[EventType]:
+def _map_watchdog_event(event: FileSystemEvent) -> EventType | None:
     """Map a watchdog event to our EventType."""
     if isinstance(event, FileCreatedEvent):
         return EventType.CREATE
@@ -64,7 +63,7 @@ class _UnworldlyHandler(FileSystemEventHandler):
         if event_type is None:
             return
 
-        relative_path = os.path.relpath(event.src_path, self.abs_dir)
+        relative_path = os.path.relpath(str(event.src_path), self.abs_dir)
         if should_ignore(relative_path):
             return
 
@@ -80,10 +79,15 @@ class _UnworldlyHandler(FileSystemEventHandler):
         )
 
         add_event(self.session, watch_event)
-        print(format_event(
-            _format_time(now), event_type, relative_path,
-            risk_result.level, risk_result.reason,
-        ))
+        print(
+            format_event(
+                _format_time(now),
+                event_type,
+                relative_path,
+                risk_result.level,
+                risk_result.reason,
+            )
+        )
 
         # Save incrementally so no data is lost on abrupt exit
         save_session(self.session, self.abs_dir)
@@ -129,7 +133,8 @@ def watch(directory: str) -> None:
     # Start command monitor
     cmd_monitor = create_command_monitor()
     if cmd_monitor is not None:
-        def _on_command(cmd):
+
+        def _on_command(cmd: CommandInfo) -> None:
             risk_result = assess_command_risk(cmd.executable, cmd.args, config.commands)
             now = datetime.now(timezone.utc)
             command_str = " ".join([cmd.executable] + cmd.args)
@@ -144,10 +149,15 @@ def watch(directory: str) -> None:
             )
 
             add_event(session, watch_event)
-            print(format_event(
-                _format_time(now), EventType.COMMAND, command_str,
-                risk_result.level, risk_result.reason,
-            ))
+            print(
+                format_event(
+                    _format_time(now),
+                    EventType.COMMAND,
+                    command_str,
+                    risk_result.level,
+                    risk_result.reason,
+                )
+            )
             save_session(session, abs_dir)
 
         cmd_monitor.start(abs_dir, _on_command)
@@ -161,7 +171,7 @@ def watch(directory: str) -> None:
     save_session(session, abs_dir)
 
     # Graceful shutdown
-    def _shutdown(signum=None, frame=None):
+    def _shutdown(signum: int | None = None, frame: object = None) -> None:
         if cmd_monitor is not None:
             cmd_monitor.stop()
         observer.stop()

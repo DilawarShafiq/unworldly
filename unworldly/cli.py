@@ -10,12 +10,12 @@ import sys
 
 import click
 
-from .watcher import watch
-from .replay import replay, list_command
+from .display import banner, verify_display
+from .integrity import verify_session
+from .replay import list_command, replay
 from .report import report
 from .session import get_latest_session, load_session
-from .integrity import verify_session
-from .display import banner, verify_display
+from .watcher import watch
 
 
 @click.group()

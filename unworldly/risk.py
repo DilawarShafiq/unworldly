@@ -9,7 +9,6 @@ from __future__ import annotations
 import os
 import re
 from dataclasses import dataclass
-from typing import Optional
 
 from .types import EventType, RiskLevel
 
@@ -17,8 +16,9 @@ from .types import EventType, RiskLevel
 @dataclass
 class RiskResult:
     """Result of a risk assessment."""
+
     level: RiskLevel
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 # --- DANGER patterns: credential files, keys, secrets ---

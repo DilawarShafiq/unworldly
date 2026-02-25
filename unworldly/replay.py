@@ -11,17 +11,15 @@ import os
 import time
 from datetime import datetime
 
-from .types import EventType, RiskLevel, Session
-from .session import load_session
-from .integrity import verify_session
 from .display import (
+    agent_badge,
     banner,
     format_event,
     replay_header,
     session_summary,
-    agent_badge,
-    verify_display,
 )
+from .integrity import verify_session
+from .session import load_session
 
 
 def _format_time(iso_string: str) -> str:
@@ -52,10 +50,7 @@ def replay(
     if not integrity.valid:
         red_bold = "\033[1;31m"
         reset = "\033[0m"
-        print(
-            f"{red_bold}  ⚠ WARNING: Session integrity check failed "
-            f"— events may have been tampered with{reset}"
-        )
+        print(f"{red_bold}  ⚠ WARNING: Session integrity check failed — events may have been tampered with{reset}")
         print("")
 
     if not session.events:
@@ -67,23 +62,21 @@ def replay(
     for i, event in enumerate(session.events):
         # Calculate delay between events
         if i > 0:
-            prev_time = datetime.fromisoformat(
-                session.events[i - 1].timestamp.replace("Z", "+00:00")
-            ).timestamp()
-            curr_time = datetime.fromisoformat(
-                event.timestamp.replace("Z", "+00:00")
-            ).timestamp()
+            prev_time = datetime.fromisoformat(session.events[i - 1].timestamp.replace("Z", "+00:00")).timestamp()
+            curr_time = datetime.fromisoformat(event.timestamp.replace("Z", "+00:00")).timestamp()
             delay = min((curr_time - prev_time) / speed, 2.0)  # Cap at 2s
             if delay > 0:
                 time.sleep(delay)
 
-        print(format_event(
-            _format_time(event.timestamp),
-            event.type,
-            event.path,
-            event.risk,
-            event.reason,
-        ))
+        print(
+            format_event(
+                _format_time(event.timestamp),
+                event.type,
+                event.path,
+                event.risk,
+                event.reason,
+            )
+        )
 
     print(session_summary(session.summary, session_path))
 
@@ -115,10 +108,11 @@ def list_command(base_dir: str) -> None:
 
     for filename in files:
         filepath = os.path.join(sessions_dir, filename)
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             data = json.load(f)
 
         from .types import Session as SessionType
+
         session = SessionType.from_dict(data)
 
         if session.summary.risk_score >= 7:
@@ -132,10 +126,7 @@ def list_command(base_dir: str) -> None:
         date_str = dt.strftime("%b %d, %Y %I:%M %p")
 
         agent_tag = f"{cyan} [{session.agent.name}]{reset}" if session.agent else ""
-        integrity_tag = (
-            f"{green} ✓{reset}" if session.integrity_hash
-            else f"{gray} ○{reset}"
-        )
+        integrity_tag = f"{green} ✓{reset}" if session.integrity_hash else f"{gray} ○{reset}"
 
         print(
             f"  {white_bold}{session.id}{reset}"

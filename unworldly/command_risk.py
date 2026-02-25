@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Optional
 
 from .types import RiskLevel
 
@@ -16,6 +15,7 @@ from .types import RiskLevel
 @dataclass
 class CommandRiskResult:
     """Result of a command risk assessment."""
+
     level: RiskLevel
     reason: str
 
@@ -23,6 +23,7 @@ class CommandRiskResult:
 @dataclass
 class CommandRiskPattern:
     """A pattern for matching commands to risk levels."""
+
     pattern: re.Pattern[str]
     risk: RiskLevel
     reason: str
@@ -31,14 +32,19 @@ class CommandRiskPattern:
 @dataclass
 class CommandRiskConfig:
     """Custom command risk configuration (allowlist/blocklist)."""
-    allowlist: list[dict] = field(default_factory=list)
-    blocklist: list[dict] = field(default_factory=list)
+
+    allowlist: list[dict[str, str]] = field(default_factory=list)
+    blocklist: list[dict[str, str]] = field(default_factory=list)
 
 
 # --- DANGER patterns: destructive, privileged, network ---
 
 DANGER_PATTERNS: list[CommandRiskPattern] = [
-    CommandRiskPattern(re.compile(r"\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f|--force.*--recursive|--recursive.*--force|-[a-zA-Z]*f[a-zA-Z]*r)\b"), RiskLevel.DANGER, "Destructive recursive deletion"),
+    CommandRiskPattern(
+        re.compile(r"\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f|--force.*--recursive|--recursive.*--force|-[a-zA-Z]*f[a-zA-Z]*r)\b"),
+        RiskLevel.DANGER,
+        "Destructive recursive deletion",
+    ),
     CommandRiskPattern(re.compile(r"\brm\s+-rf\b"), RiskLevel.DANGER, "Destructive recursive deletion"),
     CommandRiskPattern(re.compile(r"\bsudo\b"), RiskLevel.DANGER, "Elevated privilege command"),
     CommandRiskPattern(re.compile(r"\bcurl\b"), RiskLevel.DANGER, "Network request to external URL"),
@@ -50,7 +56,11 @@ DANGER_PATTERNS: list[CommandRiskPattern] = [
     CommandRiskPattern(re.compile(r"\bkill\s+-9\b"), RiskLevel.DANGER, "Force-killing process"),
     CommandRiskPattern(re.compile(r"\bkill\s+-SIGKILL\b"), RiskLevel.DANGER, "Force-killing process"),
     CommandRiskPattern(re.compile(r"\bformat\b"), RiskLevel.DANGER, "Disk format operation"),
-    CommandRiskPattern(re.compile(r"\bdel\s+/[fF]\s+/[sS]\b"), RiskLevel.DANGER, "Destructive recursive deletion (Windows)"),
+    CommandRiskPattern(
+        re.compile(r"\bdel\s+/[fF]\s+/[sS]\b"),
+        RiskLevel.DANGER,
+        "Destructive recursive deletion (Windows)",
+    ),
     CommandRiskPattern(re.compile(r"\beval\b"), RiskLevel.DANGER, "Dynamic code execution"),
     CommandRiskPattern(re.compile(r"\bnc\s+-l\b"), RiskLevel.DANGER, "Opening network listener"),
     CommandRiskPattern(re.compile(r"\bssh\b.*@"), RiskLevel.DANGER, "Remote SSH connection"),
@@ -113,7 +123,7 @@ SAFE_PATTERNS: list[CommandRiskPattern] = [
 def assess_command_risk(
     executable: str,
     args: list[str],
-    config: Optional[CommandRiskConfig] = None,
+    config: CommandRiskConfig | None = None,
 ) -> CommandRiskResult:
     """Assess the risk level of a shell command.
 

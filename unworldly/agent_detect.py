@@ -12,7 +12,6 @@ import os
 import subprocess
 import sys
 from dataclasses import dataclass, field
-from typing import Optional
 
 from .types import AgentInfo
 
@@ -20,6 +19,7 @@ from .types import AgentInfo
 @dataclass
 class AgentSignature:
     """Known signature for detecting a specific AI agent."""
+
     name: str
     env_vars: list[str] = field(default_factory=list)
     process_names: list[str] = field(default_factory=list)
@@ -78,7 +78,7 @@ KNOWN_AGENTS: list[AgentSignature] = [
 ]
 
 
-def detect_agent() -> Optional[AgentInfo]:
+def detect_agent() -> AgentInfo | None:
     """Detect which AI agent is running.
 
     Strategy 1: Check environment variables (fastest, most reliable).
@@ -126,7 +126,7 @@ def detect_agent() -> Optional[AgentInfo]:
     return None
 
 
-def _get_parent_process_name() -> Optional[str]:
+def _get_parent_process_name() -> str | None:
     """Get the parent process name."""
     try:
         ppid = os.getppid()
@@ -141,10 +141,11 @@ def _get_parent_process_name() -> Optional[str]:
                 stderr=subprocess.DEVNULL,
                 shell=True,
             )
-            lines = [l for l in output.strip().split("\n") if l.strip()]
+            lines = [line for line in output.strip().split("\n") if line.strip()]
             if len(lines) >= 2:
                 parts = lines[1].strip().split(",")
                 return parts[-1].strip() or None
+            return None
         else:
             output = subprocess.check_output(
                 ["ps", "-p", str(ppid), "-o", "comm="],
@@ -183,6 +184,6 @@ def _get_running_processes() -> list[str]:
                 timeout=2,
                 stderr=subprocess.DEVNULL,
             )
-            return [l.strip() for l in output.split("\n") if l.strip()]
+            return [line.strip() for line in output.split("\n") if line.strip()]
     except Exception:
         return []

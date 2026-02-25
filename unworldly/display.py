@@ -6,12 +6,8 @@ event formatting, and session summaries.
 
 from __future__ import annotations
 
-from typing import Optional
-
-from rich.text import Text
-
-from .types import AgentInfo, EventType, RiskLevel, SessionSummary
 from .integrity import VerifyResult
+from .types import AgentInfo, EventType, RiskLevel, SessionSummary
 
 
 def _risk_badge(level: RiskLevel) -> str:
@@ -46,7 +42,7 @@ def banner() -> str:
     lines = [
         "",
         f"{red_bold}  ╔═══════════════════════════════════════════════════╗{reset}",
-        f"{red_bold}  ║{reset}{white_bold}  UNWORLDLY{reset}{gray} v0.3.0{reset}{red_bold}                            ║{reset}",
+        f"{red_bold}  ║{reset}{white_bold}  UNWORLDLY{reset}{gray} v0.3.0{reset}{red_bold}                            ║{reset}",  # noqa: E501
         f"{red_bold}  ║{reset}{gray}  The Flight Recorder for AI Agents{reset}{red_bold}              ║{reset}",
         f"{red_bold}  ╚═══════════════════════════════════════════════════╝{reset}",
         "",
@@ -61,12 +57,14 @@ def watch_header(directory: str) -> str:
     gray = "\033[90m"
     reset = "\033[0m"
 
-    return "\n".join([
-        f"{red}  ●{reset}{white_bold} REC{reset}{gray} — Watching: {directory}{reset}",
-        f"{gray}  Press Ctrl+C to stop recording{reset}",
-        f"{gray}  {'─' * 56}{reset}",
-        "",
-    ])
+    return "\n".join(
+        [
+            f"{red}  ●{reset}{white_bold} REC{reset}{gray} — Watching: {directory}{reset}",
+            f"{gray}  Press Ctrl+C to stop recording{reset}",
+            f"{gray}  {'─' * 56}{reset}",
+            "",
+        ]
+    )
 
 
 def format_event(
@@ -74,7 +72,7 @@ def format_event(
     event_type: EventType,
     file_path: str,
     risk: RiskLevel,
-    reason: Optional[str] = None,
+    reason: str | None = None,
 ) -> str:
     """Format a single event for terminal display."""
     gray = "\033[90m"
@@ -122,23 +120,25 @@ def session_summary(summary: SessionSummary, session_path: str) -> str:
     else:
         score_color = "\033[1;32m"
 
-    return "\n".join([
-        "",
-        f"{gray}  {'─' * 56}{reset}",
-        f"{white_bold}  Session Summary{reset}",
-        "",
-        (
-            f"  Events: {white_bold}{summary.total_events}{reset}"
-            f"  {green}●{reset} Safe: {summary.safe}"
-            f"  {yellow}●{reset} Caution: {summary.caution}"
-            f"  {red}●{reset} Danger: {summary.danger}"
-        ),
-        "",
-        f"  Risk Score: {score_color}{summary.risk_score}/10{reset}",
-        "",
-        f"{gray}  Session saved: {session_path}{reset}",
-        "",
-    ])
+    return "\n".join(
+        [
+            "",
+            f"{gray}  {'─' * 56}{reset}",
+            f"{white_bold}  Session Summary{reset}",
+            "",
+            (
+                f"  Events: {white_bold}{summary.total_events}{reset}"
+                f"  {green}●{reset} Safe: {summary.safe}"
+                f"  {yellow}●{reset} Caution: {summary.caution}"
+                f"  {red}●{reset} Danger: {summary.danger}"
+            ),
+            "",
+            f"  Risk Score: {score_color}{summary.risk_score}/10{reset}",
+            "",
+            f"{gray}  Session saved: {session_path}{reset}",
+            "",
+        ]
+    )
 
 
 def replay_header(session_id: str, directory: str, start_time: str) -> str:
@@ -147,13 +147,15 @@ def replay_header(session_id: str, directory: str, start_time: str) -> str:
     gray = "\033[90m"
     reset = "\033[0m"
 
-    return "\n".join([
-        f"{blue_bold}  ▶ REPLAY{reset}{gray} — Session: {session_id}{reset}",
-        f"{gray}  Directory: {directory}{reset}",
-        f"{gray}  Recorded: {start_time}{reset}",
-        f"{gray}  {'─' * 56}{reset}",
-        "",
-    ])
+    return "\n".join(
+        [
+            f"{blue_bold}  ▶ REPLAY{reset}{gray} — Session: {session_id}{reset}",
+            f"{gray}  Directory: {directory}{reset}",
+            f"{gray}  Recorded: {start_time}{reset}",
+            f"{gray}  {'─' * 56}{reset}",
+            "",
+        ]
+    )
 
 
 def report_divider() -> str:
@@ -170,11 +172,13 @@ def agent_badge(agent: AgentInfo) -> str:
     gray = "\033[90m"
     reset = "\033[0m"
 
-    return "\n".join([
-        f"{cyan}  ◉ Agent Detected: {reset}{white_bold}{agent.name}{reset}",
-        f"{gray}    via {agent.detected_via}{reset}",
-        "",
-    ])
+    return "\n".join(
+        [
+            f"{cyan}  ◉ Agent Detected: {reset}{white_bold}{agent.name}{reset}",
+            f"{gray}    via {agent.detected_via}{reset}",
+            "",
+        ]
+    )
 
 
 def verify_display(result: VerifyResult) -> str:
@@ -202,15 +206,10 @@ def verify_display(result: VerifyResult) -> str:
     else:
         lines.append(f"{red_bold}  ✗ INTEGRITY VERIFICATION FAILED{reset}")
         lines.append("")
-        lines.append(
-            f"  Events verified: {white}{result.valid_events}/{result.total_events}{reset}"
-        )
+        lines.append(f"  Events verified: {white}{result.valid_events}/{result.total_events}{reset}")
         if result.broken_at is not None:
             lines.append(f"{red}  Chain broken at event: #{result.broken_at}{reset}")
-        session_hash_str = (
-            f"{green}✓ valid{reset}" if result.session_hash_valid
-            else f"{red}✗ invalid{reset}"
-        )
+        session_hash_str = f"{green}✓ valid{reset}" if result.session_hash_valid else f"{red}✗ invalid{reset}"
         lines.append(f"  Session hash: {session_hash_str}")
         lines.append("")
         lines.append(f"{red_bold}  Errors:{reset}")

@@ -1,13 +1,12 @@
 """Tests for terminal display formatting."""
 
-import pytest
 from unworldly.display import (
     banner,
-    watch_header,
     format_event,
-    session_summary,
     replay_header,
     report_divider,
+    session_summary,
+    watch_header,
 )
 from unworldly.types import EventType, RiskLevel, SessionSummary
 
@@ -50,7 +49,10 @@ class TestDisplay:
 
         def test_contain_reason_when_provided(self):
             output = format_event(
-                "14:23:01", EventType.MODIFY, ".env", RiskLevel.DANGER,
+                "14:23:01",
+                EventType.MODIFY,
+                ".env",
+                RiskLevel.DANGER,
                 "Credential file accessed",
             )
             assert "Credential file accessed" in output
@@ -61,7 +63,10 @@ class TestDisplay:
 
         def test_handle_command_event_type(self):
             output = format_event(
-                "14:23:01", EventType.COMMAND, "npm install lodash", RiskLevel.CAUTION,
+                "14:23:01",
+                EventType.COMMAND,
+                "npm install lodash",
+                RiskLevel.CAUTION,
                 "Installing package",
             )
             assert "npm install lodash" in output
@@ -70,7 +75,11 @@ class TestDisplay:
     class TestSessionSummary:
         def test_contain_event_counts(self):
             summary = SessionSummary(
-                total_events=10, safe=7, caution=2, danger=1, risk_score=3.5,
+                total_events=10,
+                safe=7,
+                caution=2,
+                danger=1,
+                risk_score=3.5,
             )
             output = session_summary(summary, "/path/to/session.json")
             assert "10" in output
@@ -80,14 +89,22 @@ class TestDisplay:
 
         def test_contain_risk_score(self):
             summary = SessionSummary(
-                total_events=5, safe=5, caution=0, danger=0, risk_score=0,
+                total_events=5,
+                safe=5,
+                caution=0,
+                danger=0,
+                risk_score=0,
             )
             output = session_summary(summary, "/path/to/session.json")
             assert "0/10" in output
 
         def test_contain_session_path(self):
             summary = SessionSummary(
-                total_events=0, safe=0, caution=0, danger=0, risk_score=0,
+                total_events=0,
+                safe=0,
+                caution=0,
+                danger=0,
+                risk_score=0,
             )
             output = session_summary(summary, "/my/session.json")
             assert "/my/session.json" in output

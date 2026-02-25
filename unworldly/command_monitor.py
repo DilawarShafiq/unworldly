@@ -10,9 +10,8 @@ import os
 import subprocess
 import sys
 import threading
-import time
-from dataclasses import dataclass, field
-from typing import Callable, Optional
+from collections.abc import Callable
+from dataclasses import dataclass
 
 from .types import CommandInfo
 
@@ -20,6 +19,7 @@ from .types import CommandInfo
 @dataclass
 class ProcessEntry:
     """A single process from the system process list."""
+
     pid: int
     command: str
     args: str
@@ -34,8 +34,8 @@ class CommandMonitor:
     """
 
     def __init__(self) -> None:
-        self._timer: Optional[threading.Event] = None
-        self._thread: Optional[threading.Thread] = None
+        self._timer: threading.Event | None = None
+        self._thread: threading.Thread | None = None
         self._seen_pids: set[int] = set()
         self._watch_dir: str = ""
         self._self_pid: int = os.getpid()
@@ -115,9 +115,15 @@ class CommandMonitor:
     def _should_skip(self, executable: str) -> bool:
         """Check if a process should be skipped (system/internal processes)."""
         skip = [
-            "ps", "wmic", "powershell", "cmd.exe", "conhost",
-            "unworldly", "node_modules/.bin",
-            "Get-Process", "WMIC.exe",
+            "ps",
+            "wmic",
+            "powershell",
+            "cmd.exe",
+            "conhost",
+            "unworldly",
+            "node_modules/.bin",
+            "Get-Process",
+            "WMIC.exe",
         ]
         base = os.path.basename(executable).lower()
         return any(s.lower() in base for s in skip)
@@ -144,15 +150,18 @@ class CommandMonitor:
                 continue
 
             import re
+
             match = re.match(r"^(\d+)\s+(\S+)\s+(.*)$", trimmed)
             if not match:
                 continue
 
-            entries.append(ProcessEntry(
-                pid=int(match.group(1)),
-                command=match.group(2),
-                args=match.group(3),
-            ))
+            entries.append(
+                ProcessEntry(
+                    pid=int(match.group(1)),
+                    command=match.group(2),
+                    args=match.group(3),
+                )
+            )
 
         return entries
 
@@ -186,16 +195,18 @@ class CommandMonitor:
             except ValueError:
                 continue
 
-            entries.append(ProcessEntry(
-                pid=pid,
-                command=name,
-                args=command_line or name,
-            ))
+            entries.append(
+                ProcessEntry(
+                    pid=pid,
+                    command=name,
+                    args=command_line or name,
+                )
+            )
 
         return entries
 
 
-def create_command_monitor() -> Optional[CommandMonitor]:
+def create_command_monitor() -> CommandMonitor | None:
     """Create a CommandMonitor instance, or None if unavailable."""
     try:
         monitor = CommandMonitor()

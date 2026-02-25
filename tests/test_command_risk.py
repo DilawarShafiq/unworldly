@@ -1,7 +1,6 @@
 """Tests for command risk assessment."""
 
-import pytest
-from unworldly.command_risk import assess_command_risk, CommandRiskConfig
+from unworldly.command_risk import CommandRiskConfig, assess_command_risk
 from unworldly.types import RiskLevel
 
 

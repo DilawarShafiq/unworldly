@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
+from typing import Any
 
 
 class RiskLevel(str, Enum):
     """Risk level classification for events."""
+
     SAFE = "safe"
     CAUTION = "caution"
     DANGER = "danger"
@@ -16,6 +17,7 @@ class RiskLevel(str, Enum):
 
 class EventType(str, Enum):
     """Type of recorded event."""
+
     CREATE = "create"
     MODIFY = "modify"
     DELETE = "delete"
@@ -25,14 +27,15 @@ class EventType(str, Enum):
 @dataclass
 class CommandInfo:
     """Information about a captured shell command."""
+
     executable: str
     args: list[str]
     cwd: str
     pid: int
-    exit_code: Optional[int] = None
+    exit_code: int | None = None
 
-    def to_dict(self) -> dict:
-        result: dict = {
+    def to_dict(self) -> dict[str, Any]:
+        result: dict[str, Any] = {
             "executable": self.executable,
             "args": self.args,
             "cwd": self.cwd,
@@ -43,7 +46,7 @@ class CommandInfo:
         return result
 
     @classmethod
-    def from_dict(cls, data: dict) -> CommandInfo:
+    def from_dict(cls, data: dict[str, Any]) -> CommandInfo:
         return cls(
             executable=data["executable"],
             args=data["args"],
@@ -56,16 +59,17 @@ class CommandInfo:
 @dataclass
 class WatchEvent:
     """A single recorded event (file change or command execution)."""
+
     timestamp: str
     type: EventType
     path: str
     risk: RiskLevel
-    reason: Optional[str] = None
-    command: Optional[CommandInfo] = None
-    hash: Optional[str] = None
+    reason: str | None = None
+    command: CommandInfo | None = None
+    hash: str | None = None
 
-    def to_dict(self) -> dict:
-        result: dict = {
+    def to_dict(self) -> dict[str, Any]:
+        result: dict[str, Any] = {
             "timestamp": self.timestamp,
             "type": self.type.value,
             "path": self.path,
@@ -80,7 +84,7 @@ class WatchEvent:
         return result
 
     @classmethod
-    def from_dict(cls, data: dict) -> WatchEvent:
+    def from_dict(cls, data: dict[str, Any]) -> WatchEvent:
         command = None
         if "command" in data and data["command"] is not None:
             command = CommandInfo.from_dict(data["command"])
@@ -98,13 +102,14 @@ class WatchEvent:
 @dataclass
 class AgentInfo:
     """Information about a detected AI agent."""
+
     name: str
-    pid: Optional[int] = None
-    version: Optional[str] = None
+    pid: int | None = None
+    version: str | None = None
     detected_via: str = ""
 
-    def to_dict(self) -> dict:
-        result: dict = {
+    def to_dict(self) -> dict[str, Any]:
+        result: dict[str, Any] = {
             "name": self.name,
             "detectedVia": self.detected_via,
         }
@@ -115,7 +120,7 @@ class AgentInfo:
         return result
 
     @classmethod
-    def from_dict(cls, data: dict) -> AgentInfo:
+    def from_dict(cls, data: dict[str, Any]) -> AgentInfo:
         return cls(
             name=data["name"],
             pid=data.get("pid"),
@@ -127,13 +132,14 @@ class AgentInfo:
 @dataclass
 class SessionSummary:
     """Summary statistics for a session."""
+
     total_events: int = 0
     safe: int = 0
     caution: int = 0
     danger: int = 0
     risk_score: float = 0.0
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "totalEvents": self.total_events,
             "safe": self.safe,
@@ -143,7 +149,7 @@ class SessionSummary:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> SessionSummary:
+    def from_dict(cls, data: dict[str, Any]) -> SessionSummary:
         return cls(
             total_events=data.get("totalEvents", 0),
             safe=data.get("safe", 0),
@@ -156,6 +162,7 @@ class SessionSummary:
 @dataclass
 class Session:
     """A recorded session containing all events."""
+
     version: str
     id: str
     start_time: str
@@ -163,11 +170,11 @@ class Session:
     directory: str
     events: list[WatchEvent] = field(default_factory=list)
     summary: SessionSummary = field(default_factory=SessionSummary)
-    agent: Optional[AgentInfo] = None
-    integrity_hash: Optional[str] = None
+    agent: AgentInfo | None = None
+    integrity_hash: str | None = None
 
-    def to_dict(self) -> dict:
-        result: dict = {
+    def to_dict(self) -> dict[str, Any]:
+        result: dict[str, Any] = {
             "version": self.version,
             "id": self.id,
             "startTime": self.start_time,
@@ -183,7 +190,7 @@ class Session:
         return result
 
     @classmethod
-    def from_dict(cls, data: dict) -> Session:
+    def from_dict(cls, data: dict[str, Any]) -> Session:
         agent = None
         if "agent" in data and data["agent"] is not None:
             agent = AgentInfo.from_dict(data["agent"])

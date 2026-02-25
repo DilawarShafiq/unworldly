@@ -2,21 +2,32 @@
 
 import os
 import re
-import tempfile
 import shutil
+import tempfile
+
 import pytest
 
 from unworldly.session import (
-    create_session,
     add_event,
-    save_session,
-    load_session,
-    list_sessions,
-    get_latest_session,
+    create_session,
     ensure_sessions_dir,
     generate_id,
+    get_latest_session,
+    list_sessions,
+    load_session,
+    save_session,
 )
-from unworldly.types import WatchEvent, EventType, RiskLevel
+from unworldly.types import EventType, RiskLevel, WatchEvent
+
+
+class TestGenerateId:
+    def test_return_8_character_hex_string(self):
+        id_ = generate_id()
+        assert re.match(r"^[0-9a-f]{8}$", id_)
+
+    def test_generate_unique_ids(self):
+        ids = set(generate_id() for _ in range(100))
+        assert len(ids) == 100
 
 
 class TestSession:
@@ -25,15 +36,6 @@ class TestSession:
 
     def teardown_method(self):
         shutil.rmtree(self.tmp_dir, ignore_errors=True)
-
-    class TestGenerateId:
-        def test_return_8_character_hex_string(self):
-            id_ = generate_id()
-            assert re.match(r"^[0-9a-f]{8}$", id_)
-
-        def test_generate_unique_ids(self):
-            ids = set(generate_id() for _ in range(100))
-            assert len(ids) == 100
 
     def test_ensure_sessions_dir_creates_directory(self):
         dir_path = ensure_sessions_dir(self.tmp_dir)
@@ -91,26 +93,40 @@ class TestSession:
     def test_add_event_updates_risk_score(self):
         session = create_session("/test")
 
-        add_event(session, WatchEvent(
-            timestamp="2026-01-01T00:00:00Z",
-            type=EventType.CREATE, path="a.ts", risk=RiskLevel.SAFE,
-        ))
+        add_event(
+            session,
+            WatchEvent(
+                timestamp="2026-01-01T00:00:00Z",
+                type=EventType.CREATE,
+                path="a.ts",
+                risk=RiskLevel.SAFE,
+            ),
+        )
         score_after_safe = session.summary.risk_score
 
-        add_event(session, WatchEvent(
-            timestamp="2026-01-01T00:00:01Z",
-            type=EventType.MODIFY, path=".env", risk=RiskLevel.DANGER, reason="test",
-        ))
+        add_event(
+            session,
+            WatchEvent(
+                timestamp="2026-01-01T00:00:01Z",
+                type=EventType.MODIFY,
+                path=".env",
+                risk=RiskLevel.DANGER,
+                reason="test",
+            ),
+        )
         assert session.summary.risk_score > score_after_safe
 
     def test_save_and_load_session(self):
         session = create_session(self.tmp_dir)
-        add_event(session, WatchEvent(
-            timestamp="2026-01-01T00:00:00Z",
-            type=EventType.CREATE,
-            path="test.ts",
-            risk=RiskLevel.SAFE,
-        ))
+        add_event(
+            session,
+            WatchEvent(
+                timestamp="2026-01-01T00:00:00Z",
+                type=EventType.CREATE,
+                path="test.ts",
+                risk=RiskLevel.SAFE,
+            ),
+        )
 
         filepath = save_session(session, self.tmp_dir)
         assert os.path.exists(filepath)

@@ -16,6 +16,7 @@ from .command_risk import CommandRiskConfig
 @dataclass
 class MonitorConfig:
     """Top-level monitoring configuration."""
+
     commands: CommandRiskConfig = field(default_factory=CommandRiskConfig)
 
 
@@ -34,7 +35,7 @@ def load_config(base_dir: str) -> MonitorConfig:
         return _default_config()
 
     try:
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8") as f:
             parsed = json.load(f)
 
         commands_data = parsed.get("commands", {})

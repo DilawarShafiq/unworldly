@@ -1,18 +1,17 @@
 """Tests for cryptographic integrity (SHA-256 hash chain)."""
 
 import re
-import pytest
 
 from unworldly.integrity import (
-    hash_event,
     compute_session_hash,
-    sign_event,
-    get_last_hash,
     genesis_hash,
+    get_last_hash,
+    hash_event,
+    sign_event,
     verify_session,
 )
-from unworldly.session import create_session, add_event
-from unworldly.types import WatchEvent, EventType, RiskLevel
+from unworldly.session import add_event, create_session
+from unworldly.types import EventType, RiskLevel, WatchEvent
 
 
 class TestIntegrity:
@@ -106,14 +105,32 @@ class TestIntegrity:
         def test_verify_valid_session(self):
             session = create_session("/test")
             events = [
-                WatchEvent(timestamp="2026-01-01T00:00:01Z", type=EventType.CREATE, path="a.ts", risk=RiskLevel.SAFE),
-                WatchEvent(timestamp="2026-01-01T00:00:02Z", type=EventType.MODIFY, path="b.ts", risk=RiskLevel.CAUTION, reason="test"),
-                WatchEvent(timestamp="2026-01-01T00:00:03Z", type=EventType.DELETE, path="c.ts", risk=RiskLevel.DANGER, reason="rm"),
+                WatchEvent(
+                    timestamp="2026-01-01T00:00:01Z",
+                    type=EventType.CREATE,
+                    path="a.ts",
+                    risk=RiskLevel.SAFE,
+                ),
+                WatchEvent(
+                    timestamp="2026-01-01T00:00:02Z",
+                    type=EventType.MODIFY,
+                    path="b.ts",
+                    risk=RiskLevel.CAUTION,
+                    reason="test",
+                ),
+                WatchEvent(
+                    timestamp="2026-01-01T00:00:03Z",
+                    type=EventType.DELETE,
+                    path="c.ts",
+                    risk=RiskLevel.DANGER,
+                    reason="rm",
+                ),
             ]
             for e in events:
                 add_event(session, e)
             # Seal the session
             from datetime import datetime, timezone
+
             session.end_time = datetime.now(timezone.utc).isoformat()
             session.integrity_hash = compute_session_hash(session)
 
@@ -126,16 +143,27 @@ class TestIntegrity:
 
         def test_detect_tampered_event(self):
             session = create_session("/test")
-            add_event(session, WatchEvent(
-                timestamp="2026-01-01T00:00:01Z", type=EventType.CREATE,
-                path="a.ts", risk=RiskLevel.SAFE,
-            ))
-            add_event(session, WatchEvent(
-                timestamp="2026-01-01T00:00:02Z", type=EventType.MODIFY,
-                path="b.ts", risk=RiskLevel.CAUTION,
-            ))
+            add_event(
+                session,
+                WatchEvent(
+                    timestamp="2026-01-01T00:00:01Z",
+                    type=EventType.CREATE,
+                    path="a.ts",
+                    risk=RiskLevel.SAFE,
+                ),
+            )
+            add_event(
+                session,
+                WatchEvent(
+                    timestamp="2026-01-01T00:00:02Z",
+                    type=EventType.MODIFY,
+                    path="b.ts",
+                    risk=RiskLevel.CAUTION,
+                ),
+            )
 
             from datetime import datetime, timezone
+
             session.end_time = datetime.now(timezone.utc).isoformat()
             session.integrity_hash = compute_session_hash(session)
 
@@ -149,10 +177,15 @@ class TestIntegrity:
 
         def test_detect_missing_integrity_hash(self):
             session = create_session("/test")
-            add_event(session, WatchEvent(
-                timestamp="2026-01-01T00:00:01Z", type=EventType.CREATE,
-                path="a.ts", risk=RiskLevel.SAFE,
-            ))
+            add_event(
+                session,
+                WatchEvent(
+                    timestamp="2026-01-01T00:00:01Z",
+                    type=EventType.CREATE,
+                    path="a.ts",
+                    risk=RiskLevel.SAFE,
+                ),
+            )
 
             result = verify_session(session)
             assert result.valid is False
@@ -167,11 +200,17 @@ class TestIntegrity:
 
         def test_detect_tampered_session_hash(self):
             session = create_session("/test")
-            add_event(session, WatchEvent(
-                timestamp="2026-01-01T00:00:01Z", type=EventType.CREATE,
-                path="a.ts", risk=RiskLevel.SAFE,
-            ))
+            add_event(
+                session,
+                WatchEvent(
+                    timestamp="2026-01-01T00:00:01Z",
+                    type=EventType.CREATE,
+                    path="a.ts",
+                    risk=RiskLevel.SAFE,
+                ),
+            )
             from datetime import datetime, timezone
+
             session.end_time = datetime.now(timezone.utc).isoformat()
             session.integrity_hash = "fake-hash-that-does-not-match"
 

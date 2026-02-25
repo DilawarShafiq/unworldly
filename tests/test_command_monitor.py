@@ -1,7 +1,7 @@
 """Tests for cross-platform command monitor."""
 
 import time
-import pytest
+
 from unworldly.command_monitor import CommandMonitor, create_command_monitor
 
 

@@ -2,9 +2,9 @@
 
 import json
 import os
-import tempfile
 import shutil
-import pytest
+import tempfile
+
 from unworldly.config import load_config
 
 
@@ -51,11 +51,7 @@ class TestLoadConfig:
     def test_handle_partial_config_gracefully(self):
         config_dir = os.path.join(self.tmp_dir, ".unworldly")
         os.makedirs(config_dir, exist_ok=True)
-        config_data = {
-            "commands": {
-                "allowlist": [{"pattern": "foo", "risk": "safe", "reason": "OK"}]
-            }
-        }
+        config_data = {"commands": {"allowlist": [{"pattern": "foo", "risk": "safe", "reason": "OK"}]}}
         with open(os.path.join(config_dir, "config.json"), "w") as f:
             json.dump(config_data, f)
 

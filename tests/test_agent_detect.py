@@ -1,7 +1,7 @@
 """Tests for AI agent identity detection."""
 
 import os
-import pytest
+
 from unworldly.agent_detect import detect_agent
 
 
@@ -16,11 +16,15 @@ class TestAgentDetect:
         self._original_env = os.environ.copy()
         # Clear all known agent env vars
         agent_vars = [
-            "CLAUDE_CODE", "ANTHROPIC_API_KEY",
-            "CURSOR_SESSION", "CURSOR_TRACE_ID",
-            "GITHUB_COPILOT", "COPILOT_AGENT",
+            "CLAUDE_CODE",
+            "ANTHROPIC_API_KEY",
+            "CURSOR_SESSION",
+            "CURSOR_TRACE_ID",
+            "GITHUB_COPILOT",
+            "COPILOT_AGENT",
             "WINDSURF_SESSION",
-            "DEVIN_SESSION", "DEVIN_API",
+            "DEVIN_SESSION",
+            "DEVIN_API",
             "AIDER_MODEL",
             "OPENCLAW_SESSION",
             "CLINE_SESSION",
@@ -37,11 +41,15 @@ class TestAgentDetect:
         def setup_method(self):
             self._original_env = os.environ.copy()
             agent_vars = [
-                "CLAUDE_CODE", "ANTHROPIC_API_KEY",
-                "CURSOR_SESSION", "CURSOR_TRACE_ID",
-                "GITHUB_COPILOT", "COPILOT_AGENT",
+                "CLAUDE_CODE",
+                "ANTHROPIC_API_KEY",
+                "CURSOR_SESSION",
+                "CURSOR_TRACE_ID",
+                "GITHUB_COPILOT",
+                "COPILOT_AGENT",
                 "WINDSURF_SESSION",
-                "DEVIN_SESSION", "DEVIN_API",
+                "DEVIN_SESSION",
+                "DEVIN_API",
                 "AIDER_MODEL",
                 "OPENCLAW_SESSION",
                 "CLINE_SESSION",
@@ -107,11 +115,15 @@ class TestAgentDetect:
         def setup_method(self):
             self._original_env = os.environ.copy()
             agent_vars = [
-                "CLAUDE_CODE", "ANTHROPIC_API_KEY",
-                "CURSOR_SESSION", "CURSOR_TRACE_ID",
-                "GITHUB_COPILOT", "COPILOT_AGENT",
+                "CLAUDE_CODE",
+                "ANTHROPIC_API_KEY",
+                "CURSOR_SESSION",
+                "CURSOR_TRACE_ID",
+                "GITHUB_COPILOT",
+                "COPILOT_AGENT",
                 "WINDSURF_SESSION",
-                "DEVIN_SESSION", "DEVIN_API",
+                "DEVIN_SESSION",
+                "DEVIN_API",
                 "AIDER_MODEL",
                 "OPENCLAW_SESSION",
                 "CLINE_SESSION",
@@ -134,11 +146,15 @@ class TestAgentDetect:
         def setup_method(self):
             self._original_env = os.environ.copy()
             agent_vars = [
-                "CLAUDE_CODE", "ANTHROPIC_API_KEY",
-                "CURSOR_SESSION", "CURSOR_TRACE_ID",
-                "GITHUB_COPILOT", "COPILOT_AGENT",
+                "CLAUDE_CODE",
+                "ANTHROPIC_API_KEY",
+                "CURSOR_SESSION",
+                "CURSOR_TRACE_ID",
+                "GITHUB_COPILOT",
+                "COPILOT_AGENT",
                 "WINDSURF_SESSION",
-                "DEVIN_SESSION", "DEVIN_API",
+                "DEVIN_SESSION",
+                "DEVIN_API",
                 "AIDER_MODEL",
                 "OPENCLAW_SESSION",
                 "CLINE_SESSION",

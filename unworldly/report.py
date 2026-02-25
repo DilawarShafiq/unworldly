@@ -6,13 +6,12 @@ including integrity verification and ISO 42001 compliance sections.
 
 from __future__ import annotations
 
-import os
 from datetime import datetime
 
-from .types import Session, WatchEvent
-from .session import load_session
-from .integrity import verify_session
 from .display import banner, verify_display
+from .integrity import verify_session
+from .session import load_session
+from .types import Session, WatchEvent
 
 
 def _group_by_risk(events: list[WatchEvent]) -> dict[str, list[WatchEvent]]:
@@ -36,12 +35,10 @@ def _generate_markdown(session: Session) -> str:
     """Generate a markdown security report from a session."""
     summary = session.summary
     events = session.events
-    start_date = datetime.fromisoformat(
-        session.start_time.replace("Z", "+00:00")
-    ).strftime("%c")
-    end_date = datetime.fromisoformat(
-        session.end_time.replace("Z", "+00:00")
-    ).strftime("%c") if session.end_time else "N/A"
+    start_date = datetime.fromisoformat(session.start_time.replace("Z", "+00:00")).strftime("%c")
+    end_date = (
+        datetime.fromisoformat(session.end_time.replace("Z", "+00:00")).strftime("%c") if session.end_time else "N/A"
+    )
 
     danger_events = [e for e in events if e.risk.value == "danger"]
     caution_events = [e for e in events if e.risk.value == "caution"]
@@ -199,15 +196,10 @@ def report(
 
     print(f"  Session:   {white}{session.id}{reset}")
     print(f"  Directory: {gray}{session.directory}{reset}")
-    start_str = datetime.fromisoformat(
-        session.start_time.replace("Z", "+00:00")
-    ).strftime("%c")
+    start_str = datetime.fromisoformat(session.start_time.replace("Z", "+00:00")).strftime("%c")
     print(f"  Recorded:  {gray}{start_str}{reset}")
     if session.agent:
-        print(
-            f"  Agent:     {cyan}{session.agent.name}{reset} "
-            f"{gray}({session.agent.detected_via}){reset}"
-        )
+        print(f"  Agent:     {cyan}{session.agent.name}{reset} {gray}({session.agent.detected_via}){reset}")
     print("")
 
     # Integrity verification
