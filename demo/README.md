@@ -7,12 +7,22 @@ Choreographed simulation that shows Unworldly catching an AI agent doing increas
 | File | Purpose |
 |------|---------|
 | `simulate.py` | Python script that imports real `unworldly.display` functions |
-| `demo.tape` | VHS config for recording (preferred method) |
+| `render_cast.py` | Generates .cast file + GIF via agg (recommended on Windows) |
+| `demo.tape` | VHS config for recording (Linux/macOS) |
 | `record.sh` | Fallback recording via asciinema + agg |
 
 ## Generate the GIF
 
-### Option A: VHS (preferred)
+### Option A: render_cast.py (recommended, works everywhere)
+
+Only requires [agg](https://github.com/asciinema/agg/releases) on PATH:
+
+```bash
+python demo/render_cast.py
+# Outputs: assets/demo.gif
+```
+
+### Option B: VHS (Linux/macOS)
 
 Install [VHS](https://github.com/charmbracelet/vhs), then:
 
@@ -21,7 +31,7 @@ vhs demo/demo.tape
 # Outputs: assets/demo.gif
 ```
 
-### Option B: asciinema + agg
+### Option C: asciinema + agg
 
 Install [asciinema](https://asciinema.org) and [agg](https://github.com/asciinema/agg), then:
 
@@ -30,7 +40,7 @@ bash demo/record.sh
 # Outputs: assets/demo.gif
 ```
 
-### Option C: Preview (no recording)
+### Option D: Preview (no recording)
 
 ```bash
 python demo/simulate.py
