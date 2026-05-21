@@ -2,6 +2,23 @@
 
 All notable changes to Unworldly are documented here.
 
+## [0.5.0] - 2026-05-21
+
+### Added
+- **Session tagging**: `unworldly watch --tag pr-456` labels sessions for easy retrieval
+- **List filters**: `unworldly list --risk danger --agent "Claude Code" --since 2h --tag pr-456`
+- **Sparkline timeline**: visual event-density bar (▁▂▃▄▅▆▇█) in `unworldly list`
+- **`unworldly touched <session>`**: per-file summary ranked by risk — the fast answer to "what did the agent change?"
+- **`unworldly diff <a> <b>`**: compare two sessions side by side — risk delta, file overlap, new commands
+- **`unworldly export --sarif`**: SARIF 2.1.0 export for GitHub Code Scanning (shows in GitHub Security tab)
+- **`unworldly snapshot before/after`**: git-aware pre/post agent diff — commits, status, untracked files
+- **`unworldly review`**: interactive TUI — approve/flag/skip/note events with a keypress, saves `review.json`
+- **`--on-danger`**: real-time webhook POST or desktop notification when a danger event fires
+- **`unworldly report --owasp`**: maps session events to OWASP Agentic AI Top 10 (2026) — first tool to do this at the filesystem level
+- **GitHub Action**: `unworldly-action` — posts session report as PR comment, uploads SARIF, optionally fails CI on danger
+- **New modules**: `owasp.py`, `diff.py`, `sarif.py`, `snapshot.py`, `alerts.py`, `review.py`
+- 40+ new tests (diff, owasp, sarif, alerts)
+
 ## [0.4.1] - 2026-02-26
 
 ### Added

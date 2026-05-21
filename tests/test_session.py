@@ -50,7 +50,7 @@ class TestSession:
 
     def test_create_session_correct_structure(self):
         session = create_session("/test/dir")
-        assert session.version == "0.3.0"
+        assert session.version == "0.5.0"
         assert re.match(r"^[0-9a-f]{8}$", session.id)
         assert session.start_time
         assert session.end_time == ""

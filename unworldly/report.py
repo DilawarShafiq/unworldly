@@ -150,6 +150,7 @@ def report(
     session_path: str,
     output: str | None = None,
     format: str = "terminal",
+    include_owasp: bool = False,
 ) -> None:
     """Generate a security report from a recorded session.
 
@@ -173,6 +174,10 @@ def report(
 
     if format in ("md", "markdown"):
         markdown = _generate_markdown(session)
+        if include_owasp:
+            from .owasp import map_session, owasp_markdown_section
+            findings = map_session(session)
+            markdown += "\n" + owasp_markdown_section(findings)
         output_path = output or f"unworldly-report-{session.id}.md"
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(markdown)
@@ -240,6 +245,11 @@ def report(
     else:
         print(f"{green}  Session looks clean — no major concerns{reset}")
     print("")
+
+    if include_owasp:
+        from .owasp import map_session, owasp_terminal_report
+        findings = map_session(session)
+        print(owasp_terminal_report(findings))
 
     # Suggest markdown export
     print(f"{gray}  Export full report: unworldly report {session_path} --format md{reset}")

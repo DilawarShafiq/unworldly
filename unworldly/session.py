@@ -30,10 +30,10 @@ def ensure_sessions_dir(base_dir: str) -> str:
     return dir_path
 
 
-def create_session(directory: str) -> Session:
+def create_session(directory: str, tag: str | None = None) -> Session:
     """Create a new empty session."""
     return Session(
-        version="0.3.0",
+        version="0.5.0",
         id=generate_id(),
         start_time=datetime.now(timezone.utc).isoformat(),
         end_time="",
@@ -46,6 +46,7 @@ def create_session(directory: str) -> Session:
             danger=0,
             risk_score=0.0,
         ),
+        tag=tag,
     )
 
 

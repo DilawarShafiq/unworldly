@@ -51,11 +51,12 @@ def _map_watchdog_event(event: FileSystemEvent) -> EventType | None:
 class _UnworldlyHandler(FileSystemEventHandler):
     """Watchdog event handler that records file changes."""
 
-    def __init__(self, abs_dir: str, session: Session, hipaa: bool = False) -> None:
+    def __init__(self, abs_dir: str, session: Session, hipaa: bool = False, on_danger: str | None = None) -> None:
         super().__init__()
         self.abs_dir = abs_dir
         self.session = session
         self.hipaa = hipaa
+        self.on_danger = on_danger
 
     def _handle(self, event: FileSystemEvent) -> None:
         if event.is_directory:
@@ -96,6 +97,10 @@ class _UnworldlyHandler(FileSystemEventHandler):
             )
         )
 
+        if self.on_danger and risk_result.level.value == "danger":
+            from .alerts import fire_alert
+            fire_alert(self.on_danger, watch_event, self.session)
+
         # Save incrementally so no data is lost on abrupt exit
         save_session(self.session, self.abs_dir)
 
@@ -109,14 +114,20 @@ class _UnworldlyHandler(FileSystemEventHandler):
         self._handle(event)
 
 
-def watch(directory: str, hipaa: bool = False) -> None:
+def watch(directory: str, hipaa: bool = False, tag: str | None = None, on_danger: str | None = None) -> None:
     """Start recording AI agent activity in the given directory.
 
     Monitors file changes (create/modify/delete) and shell commands,
     detects the running AI agent, and saves a tamper-proof session.
+
+    Args:
+        directory: Directory to watch.
+        hipaa:     Enable HIPAA PHI detection patterns.
+        tag:       Optional label for the session (e.g. "pr-456").
+        on_danger: Fire an alert on every danger event — a webhook URL or "desktop".
     """
     abs_dir = os.path.abspath(directory)
-    session = create_session(abs_dir)
+    session = create_session(abs_dir, tag=tag)
 
     # ISO 42001 A.3.2: Detect which AI agent is running
     agent = detect_agent()
@@ -140,7 +151,7 @@ def watch(directory: str, hipaa: bool = False) -> None:
         print()
 
     # Set up watchdog observer
-    handler = _UnworldlyHandler(abs_dir, session, hipaa=hipaa_enabled)
+    handler = _UnworldlyHandler(abs_dir, session, hipaa=hipaa_enabled, on_danger=on_danger)
     observer = Observer()
     observer.schedule(handler, abs_dir, recursive=True)
     observer.start()
@@ -177,6 +188,9 @@ def watch(directory: str, hipaa: bool = False) -> None:
                     risk_result.reason,
                 )
             )
+            if on_danger and risk_result.level.value == "danger":
+                from .alerts import fire_alert
+                fire_alert(on_danger, watch_event, session)
             save_session(session, abs_dir)
 
         cmd_monitor.start(abs_dir, _on_command)

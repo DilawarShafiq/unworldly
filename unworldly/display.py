@@ -42,7 +42,7 @@ def banner() -> str:
     lines = [
         "",
         f"{red_bold}  ╔═══════════════════════════════════════════════════╗{reset}",
-        f"{red_bold}  ║{reset}{white_bold}  UNWORLDLY{reset}{gray} v0.3.0{reset}{red_bold}                            ║{reset}",  # noqa: E501
+        f"{red_bold}  ║{reset}{white_bold}  UNWORLDLY{reset}{gray} v0.5.0{reset}{red_bold}                            ║{reset}",  # noqa: E501
         f"{red_bold}  ║{reset}{gray}  The Flight Recorder for AI Agents{reset}{red_bold}              ║{reset}",
         f"{red_bold}  ╚═══════════════════════════════════════════════════╝{reset}",
         "",

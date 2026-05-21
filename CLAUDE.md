@@ -5,36 +5,43 @@
 **Unworldly** is the flight recorder for AI agents. It records, replays, and audits everything AI agents do on your system — file changes AND shell commands.
 
 - **Repo**: https://github.com/DilawarShafiq/unworldly
-- **Version**: 0.1.0 (pre-npm-publish)
+- **Package**: `unworldly-recorder` on PyPI
+- **Version**: 0.4.1 (live on PyPI + GitHub Release)
 - **Main branch**: `master`
-- **Tech**: TypeScript (strict, ESM), Node.js >= 18, chalk + chokidar + commander
-- **Build**: `npm run build` (tsc) | **Test**: `npx vitest run` | **Dev**: `npm run dev`
+- **Tech**: Python 3.10+, click, watchdog, rich
+- **Test**: `pytest` | **Lint**: `ruff` | **Types**: `mypy --strict`
 - **Constitution**: `.specify/memory/constitution.md` (6 principles: Agent-Agnostic, Local-First Privacy, Zero Interference, Risk-First Design, CLI-First, Ship Small)
 
 ### Source Layout
 ```
-src/
-  cli.ts             — CLI entry (commander): watch, replay, report, list
-  types.ts           — WatchEvent, Session, CommandInfo, RiskLevel
-  risk.ts            — File risk scoring (danger/caution/safe patterns)
-  command-risk.ts    — Command risk scoring (shell command patterns)
-  command-monitor.ts — Cross-platform process monitor (polls ps/wmic)
-  config.ts          — Config loader (.unworldly/config.json)
-  display.ts         — Terminal output (chalk, color-coded risk badges)
-  session.ts         — Session CRUD, incremental saving
-  watcher.ts         — Chokidar file watcher + command monitor integration
-  replay.ts          — Session playback with timing
-  report.ts          — Terminal + markdown report generation
-  index.ts           — Public API exports
+unworldly/
+  cli.py             — CLI entry (click): watch, replay, report, verify, list/ls
+  types.py           — WatchEvent, Session, AgentInfo, CommandInfo, RiskLevel
+  risk.py            — File risk scoring (danger/caution/safe patterns)
+  command_risk.py    — Command risk scoring (shell command patterns)
+  command_monitor.py — Cross-platform process monitor (polls ps/wmic)
+  config.py          — Config loader (.unworldly/config.json)
+  integrity.py       — SHA-256 hash chain, session seal, verify
+  agent_detect.py    — AI agent identity detection (8 agents)
+  display.py         — Terminal output (ANSI colors, risk badges)
+  session.py         — Session CRUD, incremental saving, hash chain
+  watcher.py         — watchdog file watcher + command monitor integration
+  replay.py          — Session playback with timing + list command
+  report.py          — Terminal + markdown report generation
+  hipaa_risk.py      — Optional HIPAA PHI detection module
+  __init__.py        — Public API exports (v0.4.1)
 tests/
-  command-risk.test.ts, command-monitor.test.ts, config.test.ts
+  test_risk.py, test_command_risk.py, test_command_monitor.py
+  test_session.py, test_integrity.py, test_agent_detect.py
+  test_config.py, test_display.py, test_hipaa_risk.py
 ```
 
 ### Key Rules
 - Sessions stored as JSON in `.unworldly/sessions/`
 - Events unified: file changes and commands share WatchEvent type
-- Risk pattern order matters: danger checked first, then safe, then caution
-- Incremental session saving (every event) for Windows crash resilience
+- Risk pattern order: HIPAA (if enabled) → danger → safe → caution
+- Incremental session saving (every event) for crash resilience
+- Agent identity detected at session start (env vars → parent process → process list)
 - Auto-commit after completing work (user preference)
 
 ---

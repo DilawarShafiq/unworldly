@@ -11,8 +11,12 @@ from .command_risk import CommandRiskConfig, CommandRiskResult, assess_command_r
 from .config import MonitorConfig, load_config
 from .hipaa_risk import assess_hipaa_command_risk, assess_hipaa_file_risk
 from .integrity import VerifyResult, compute_session_hash, genesis_hash, hash_event, verify_session
+from .diff import diff_command
+from .owasp import map_session as owasp_map_session
 from .replay import replay
 from .report import report
+from .sarif import export_sarif
+from .snapshot import snapshot_before, snapshot_after
 from .risk import assess_risk, calculate_risk_score, should_ignore
 from .types import (
     AgentInfo,
@@ -25,7 +29,7 @@ from .types import (
 )
 from .watcher import watch
 
-__version__ = "0.4.1"
+__version__ = "0.5.0"
 
 __all__ = [
     # Core functions
@@ -61,4 +65,10 @@ __all__ = [
     "CommandRiskConfig",
     "MonitorConfig",
     "VerifyResult",
+    # v0.5.0
+    "diff_command",
+    "owasp_map_session",
+    "export_sarif",
+    "snapshot_before",
+    "snapshot_after",
 ]

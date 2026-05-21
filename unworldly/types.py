@@ -172,6 +172,7 @@ class Session:
     summary: SessionSummary = field(default_factory=SessionSummary)
     agent: AgentInfo | None = None
     integrity_hash: str | None = None
+    tag: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
@@ -187,6 +188,8 @@ class Session:
             result["agent"] = self.agent.to_dict()
         if self.integrity_hash is not None:
             result["integrityHash"] = self.integrity_hash
+        if self.tag is not None:
+            result["tag"] = self.tag
         return result
 
     @classmethod
@@ -204,4 +207,5 @@ class Session:
             summary=SessionSummary.from_dict(data.get("summary", {})),
             agent=agent,
             integrity_hash=data.get("integrityHash"),
+            tag=data.get("tag"),
         )

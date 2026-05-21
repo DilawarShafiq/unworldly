@@ -1,0 +1,137 @@
+name: "Unworldly Agent Activity Report"
+description: >
+  Generate a security report from an Unworldly session and post it
+  as a PR comment. Optionally upload SARIF to GitHub Code Scanning.
+
+branding:
+  icon: "shield"
+  color: "red"
+
+inputs:
+  session:
+    description: "Session ID or path. Uses latest session if not specified."
+    required: false
+    default: ""
+  format:
+    description: "Report format: terminal, md, sarif"
+    required: false
+    default: "md"
+  upload-sarif:
+    description: "Upload SARIF results to GitHub Code Scanning (true/false)"
+    required: false
+    default: "false"
+  post-comment:
+    description: "Post report as a PR comment (true/false)"
+    required: false
+    default: "true"
+  fail-on-danger:
+    description: "Exit with code 1 if any DANGER events are found"
+    required: false
+    default: "false"
+  hipaa:
+    description: "Enable HIPAA PHI detection in the report"
+    required: false
+    default: "false"
+  owasp:
+    description: "Include OWASP Agentic AI Top 10 mapping in the report"
+    required: false
+    default: "true"
+
+outputs:
+  risk-score:
+    description: "Session risk score (0-10)"
+    value: ${{ steps.report.outputs.risk_score }}
+  danger-count:
+    description: "Number of danger events"
+    value: ${{ steps.report.outputs.danger_count }}
+  report-path:
+    description: "Path to the generated report file"
+    value: ${{ steps.report.outputs.report_path }}
+  sarif-path:
+    description: "Path to the SARIF file (if generated)"
+    value: ${{ steps.sarif.outputs.sarif_path }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Unworldly
+      shell: bash
+      run: pip install unworldly-recorder --quiet
+
+    - name: Generate report
+      id: report
+      shell: bash
+      run: |
+        SESSION_ARG="${{ inputs.session }}"
+        OWASP_FLAG=""
+        if [ "${{ inputs.owasp }}" = "true" ]; then OWASP_FLAG="--owasp"; fi
+
+        if [ "${{ inputs.format }}" = "md" ]; then
+          REPORT_PATH="unworldly-report.md"
+          if [ -n "$SESSION_ARG" ]; then
+            unworldly report "$SESSION_ARG" --format md --output "$REPORT_PATH" $OWASP_FLAG
+          else
+            unworldly report --format md --output "$REPORT_PATH" $OWASP_FLAG
+          fi
+          echo "report_path=$REPORT_PATH" >> $GITHUB_OUTPUT
+        else
+          if [ -n "$SESSION_ARG" ]; then
+            unworldly report "$SESSION_ARG" $OWASP_FLAG
+          else
+            unworldly report $OWASP_FLAG
+          fi
+        fi
+
+        # Extract metrics from session list
+        RISK=$(unworldly list 2>/dev/null | grep -oP 'Risk: \K[0-9.]+' | head -1 || echo "0")
+        echo "risk_score=$RISK" >> $GITHUB_OUTPUT
+
+    - name: Generate SARIF
+      id: sarif
+      if: inputs.upload-sarif == 'true' || inputs.format == 'sarif'
+      shell: bash
+      run: |
+        SARIF_PATH="unworldly.sarif"
+        if [ -n "${{ inputs.session }}" ]; then
+          unworldly export "${{ inputs.session }}" --sarif --output "$SARIF_PATH"
+        else
+          unworldly export --sarif --output "$SARIF_PATH"
+        fi
+        echo "sarif_path=$SARIF_PATH" >> $GITHUB_OUTPUT
+
+    - name: Upload SARIF to GitHub Code Scanning
+      if: inputs.upload-sarif == 'true'
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ steps.sarif.outputs.sarif_path }}
+        category: unworldly-agent-activity
+
+    - name: Post PR comment
+      if: inputs.post-comment == 'true' && github.event_name == 'pull_request' && inputs.format == 'md'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const reportPath = '${{ steps.report.outputs.report_path }}';
+          if (!fs.existsSync(reportPath)) { return; }
+          let body = fs.readFileSync(reportPath, 'utf8');
+          // Trim to GitHub comment limit
+          if (body.length > 65000) {
+            body = body.slice(0, 64900) + '\n\n*[Report truncated — see full file in artifacts]*';
+          }
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            body: `## 🛡️ Unworldly Agent Activity Report\n\n${body}`,
+          });
+
+    - name: Fail on danger events
+      if: inputs.fail-on-danger == 'true'
+      shell: bash
+      run: |
+        DANGER=$(unworldly list 2>/dev/null | grep -c "DANGER" || echo "0")
+        if [ "$DANGER" -gt "0" ]; then
+          echo "::error::Unworldly detected $DANGER danger event(s). Review before merging."
+          exit 1
+        fi

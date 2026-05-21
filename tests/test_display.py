@@ -19,7 +19,7 @@ class TestDisplay:
 
         def test_contain_version(self):
             output = banner()
-            assert "v0.3.0" in output
+            assert "v0.5.0" in output
 
         def test_contain_tagline(self):
             output = banner()
