@@ -58,8 +58,10 @@ a spec + suggest an ADR and move on — don't guess.
       OTel spans; `spans_to_session` aggregates input/output/total onto `Session.usage`;
       reports show a Token Usage section. Tokens are factual; dollar cost = tokens × your
       model's rate (not guessed).
-- [ ] **10. Prompt/reasoning capture (opt-in)** — spec only first (privacy-sensitive);
-      requires explicit opt-in and redaction.
+- [x] **10. Prompt/reasoning capture (opt-in)** — SPEC done:
+      `specs/prompt-capture/spec.md` (off by default, consent-gated, redacted, separable
+      & purgeable storage, honesty contract). ADR suggested: `prompt-capture-privacy-model`.
+      Implementation intentionally deferred pending maintainer + user consent.
 
 ## Deferred / needs maintainer decision
 - Web dashboard (larger; separate effort)

@@ -57,7 +57,26 @@ unworldly report --format md
 
 # Verify nobody tampered with the session
 unworldly verify
+
+# Check what THIS machine can actually capture (and what it can't)
+unworldly doctor
+
+# Lossless command capture (fixes poll-mode misses)
+unworldly hook install
 ```
+
+## Capture layers
+
+Unworldly captures agents at four levels — use the one(s) that fit your agent. Every session records which layer produced it, and reports state what that layer could *not* see.
+
+| Layer | Command / API | Captures | For |
+|-------|---------------|----------|-----|
+| **L1 File + shell** | `unworldly watch` (+ `hook install` for lossless) | File changes + shell commands | Local coding agents (Claude Code, Cursor, Aider, Cline) |
+| **L2 Tool-call trace** | `AgentTraceRecorder`, `@trace_tool` | In-process tool calls (decision trail) | SDK/custom agents (OpenAI Agents SDK, Google ADK, LangGraph) |
+| **L3 MCP** | `unworldly mcp-proxy -- <server>` | Every MCP `tools/call` — no agent code change | Any MCP-using agent |
+| **L4 OpenTelemetry** | `unworldly collect <spans.json>` | `gen_ai.*` tool/model spans + token usage | No-code/cloud agents that export OTel |
+
+L2/L3/L4 feed the same risk scoring, secret redaction, SHA-256 hash chain, `verify`/`report`/`replay` as L1. See [`specs/agent-instrumentation/spec.md`](specs/agent-instrumentation/spec.md).
 
 ## Live Output
 
@@ -70,7 +89,7 @@ unworldly verify
 
 ```
   ╔═══════════════════════════════════════════════════╗
-  ║  UNWORLDLY v0.3.0                                ║
+  ║  UNWORLDLY v0.6.0                                ║
   ║  The Flight Recorder for AI Agents               ║
   ╚═══════════════════════════════════════════════════╝
 

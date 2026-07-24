@@ -17,5 +17,20 @@ Self-paced development toward the vision in `ROADMAP.md`.
 | 2026-07-24T20:04Z | Item 7: capture coverage into SARIF run/invocation props (reports already covered in item 2) (+1 test) | ✅ committed, 305 tests |
 | 2026-07-24T20:21Z | Item 8 (spec): `specs/lossless-command-capture/spec.md` — kernel exec capture (auditd/eBPF) + ADR suggestion; impl deferred | ✅ committed (docs) |
 | 2026-07-24T20:38Z | Item 9: token usage from OTel `gen_ai.usage.*` → `Session.usage` + report section (5 tests) | ✅ committed, 310 tests |
+| 2026-07-24T20:56Z | Item 10 (spec): `specs/prompt-capture/spec.md` (opt-in, consent-gated, redacted, purgeable) + README polish (capture-layer table, doctor/collect/mcp-proxy) | ✅ committed, 310 tests |
 
-_Next: ROADMAP item 10 (prompt-capture SPEC only), then final README/docs polish pass + STOP the loop honestly._
+## Loop complete — 2026-07-24T20:56Z
+
+All ROADMAP Queue items done or spec'd. Stopping the loop rather than inventing filler work.
+
+**Shipped this window (v0.6.0, local commits only — NOT released):**
+- Single-source versioning + guard tests; bump to 0.6.0; tags v0.5.0 (retro) + v0.6.0
+- Item 1 `unworldly doctor` · Item 2 report capture-coverage · Item 3 secret redaction
+- Item 4 OTel ingestion + `collect` · Item 5 `unworldly mcp-proxy` · Item 6 SDK agent detection
+- Item 7 SARIF coverage · Item 8 kernel-capture SPEC · Item 9 token usage · Item 10 prompt-capture SPEC
+- Tests 259 → 310 (+51 net over the window; 267→310 feature tests). ruff at baseline, mypy --strict clean.
+
+**Remaining for the maintainer (needs human):**
+- Release 0.6.0 to PyPI + push (I never push/publish)
+- ADRs: agent-instrumentation-capture-model, kernel-command-capture-backend, prompt-capture-privacy-model
+- Implement: live OTLP receiver (item 4 remainder), eBPF/auditd (item 8), prompt capture (item 10)
