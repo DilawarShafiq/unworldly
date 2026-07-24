@@ -33,8 +33,23 @@ GEN_AI_TOOL = "gen_ai.tool.name"
 GEN_AI_TOOL_ARGS = "gen_ai.tool.call.arguments"
 GEN_AI_MODEL = "gen_ai.request.model"
 GEN_AI_SYSTEM = "gen_ai.system"
+GEN_AI_USAGE_INPUT = "gen_ai.usage.input_tokens"
+GEN_AI_USAGE_OUTPUT = "gen_ai.usage.output_tokens"
 
 CAPTURE_SOURCE = "otel"
+
+
+def extract_usage(span: dict[str, Any]) -> tuple[int, int]:
+    """Return (input_tokens, output_tokens) from a span's gen_ai.usage.* attributes."""
+    attrs = span.get("attributes") or {}
+
+    def _int(key: str) -> int:
+        try:
+            return int(attrs.get(key, 0) or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    return _int(GEN_AI_USAGE_INPUT), _int(GEN_AI_USAGE_OUTPUT)
 
 
 def _parse_args(raw: Any) -> Any:
@@ -116,10 +131,22 @@ def spans_to_session(
     if agent_name:
         session.agent = AgentInfo(name=agent_name, detected_via=CAPTURE_SOURCE)
 
+    input_tokens = 0
+    output_tokens = 0
     for span in spans:
         event = span_to_event(span, redact=redact)
         if event is not None:
             add_event(session, event)
+        i, o = extract_usage(span)
+        input_tokens += i
+        output_tokens += o
+
+    if input_tokens or output_tokens:
+        session.usage = {
+            "inputTokens": input_tokens,
+            "outputTokens": output_tokens,
+            "totalTokens": input_tokens + output_tokens,
+        }
 
     if save:
         ensure_sessions_dir(abs_dir)

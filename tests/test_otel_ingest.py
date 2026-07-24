@@ -4,6 +4,7 @@ import json
 
 from unworldly.integrity import verify_session
 from unworldly.otel_ingest import (
+    extract_usage,
     ingest_file,
     span_to_event,
     spans_to_session,
@@ -91,6 +92,38 @@ class TestSpansToSession:
         session = ingest_file(str(spans_file), directory=str(tmp_path))
         assert session.summary.total_events == 1
         assert session.summary.caution == 1  # update → caution
+
+
+class TestUsageTracking:
+    def test_extract_usage_reads_tokens(self):
+        span = {"attributes": {"gen_ai.usage.input_tokens": 100, "gen_ai.usage.output_tokens": 40}}
+        assert extract_usage(span) == (100, 40)
+
+    def test_extract_usage_missing_is_zero(self):
+        assert extract_usage({"attributes": {}}) == (0, 0)
+
+    def test_session_aggregates_token_usage(self, tmp_path):
+        spans = [
+            {"name": "chat", "attributes": {"gen_ai.operation.name": "chat",
+             "gen_ai.request.model": "m", "gen_ai.usage.input_tokens": 100, "gen_ai.usage.output_tokens": 40}},
+            {"name": "chat", "attributes": {"gen_ai.operation.name": "chat",
+             "gen_ai.request.model": "m", "gen_ai.usage.input_tokens": 10, "gen_ai.usage.output_tokens": 5}},
+        ]
+        session = spans_to_session(spans, directory=str(tmp_path))
+        assert session.usage == {"inputTokens": 110, "outputTokens": 45, "totalTokens": 155}
+
+    def test_no_usage_when_no_tokens(self, tmp_path):
+        session = spans_to_session([{"name": "execute_tool x", "attributes": {}}], directory=str(tmp_path))
+        assert session.usage is None
+
+    def test_usage_survives_reload(self, tmp_path):
+        from unworldly.session import load_session
+
+        spans = [{"name": "chat", "attributes": {"gen_ai.request.model": "m", "gen_ai.usage.input_tokens": 7}}]
+        session = spans_to_session(spans, directory=str(tmp_path))
+        loaded = load_session(_path(session, tmp_path))
+        assert loaded.usage is not None
+        assert loaded.usage["inputTokens"] == 7
 
 
 def _path(session, tmp_path):

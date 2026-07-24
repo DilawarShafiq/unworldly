@@ -130,6 +130,15 @@ def _generate_markdown(session: Session) -> str:
 
 """
 
+    if session.usage:
+        u = session.usage
+        md += "## Token Usage\n\n"
+        md += "| Metric | Tokens |\n|--------|--------|\n"
+        md += f"| Input | {u.get('inputTokens', 0):,} |\n"
+        md += f"| Output | {u.get('outputTokens', 0):,} |\n"
+        md += f"| **Total** | **{u.get('totalTokens', 0):,}** |\n\n"
+        md += "> Cost = total tokens × your model's per-token rate.\n\n"
+
     if danger_events:
         md += "## Dangerous Actions\n\n"
         md += "| Time | Action | Target | Reason |\n"
@@ -248,6 +257,10 @@ def report(
     capture_label, capture_note = capture_coverage(session.capture_source)
     print(f"  Capture:   {white}{capture_label}{reset}")
     print(f"  {gray}Coverage:  {capture_note}{reset}")
+    if session.usage:
+        total = session.usage.get("totalTokens", 0)
+        print(f"  Tokens:    {white}{total:,}{reset} {gray}(in {session.usage.get('inputTokens', 0):,}"
+              f" / out {session.usage.get('outputTokens', 0):,}){reset}")
     print("")
 
     # Integrity verification

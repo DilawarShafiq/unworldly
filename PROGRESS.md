@@ -16,5 +16,6 @@ Self-paced development toward the vision in `ROADMAP.md`.
 | 2026-07-24T19:46Z | Item 6: `detect_sdk_agent()` via sys.modules + recorder auto-labels identity (6 tests) | ✅ committed, 304 tests |
 | 2026-07-24T20:04Z | Item 7: capture coverage into SARIF run/invocation props (reports already covered in item 2) (+1 test) | ✅ committed, 305 tests |
 | 2026-07-24T20:21Z | Item 8 (spec): `specs/lossless-command-capture/spec.md` — kernel exec capture (auditd/eBPF) + ADR suggestion; impl deferred | ✅ committed (docs) |
+| 2026-07-24T20:38Z | Item 9: token usage from OTel `gen_ai.usage.*` → `Session.usage` + report section (5 tests) | ✅ committed, 310 tests |
 
-_Next: ROADMAP item 9 — cost/usage tracking from OTel gen_ai.usage.* attributes (builds on item 4)._
+_Next: ROADMAP item 10 (prompt-capture SPEC only), then final README/docs polish pass + STOP the loop honestly._

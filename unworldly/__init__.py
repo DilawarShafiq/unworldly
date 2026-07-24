@@ -26,7 +26,7 @@ from .agent_trace import (
 )
 from .mcp_proxy import MCPProxyInterceptor, parse_message, run_stdio_proxy
 from .otel_ingest import ingest_file as otel_ingest_file
-from .otel_ingest import span_to_event, spans_to_session
+from .otel_ingest import extract_usage, span_to_event, spans_to_session
 from .shell_hook import (
     ShellHookMonitor,
     create_shell_hook_monitor,
@@ -105,6 +105,7 @@ __all__ = [
     "span_to_event",
     "spans_to_session",
     "otel_ingest_file",
+    "extract_usage",
     # MCP capture proxy (L3)
     "MCPProxyInterceptor",
     "parse_message",

@@ -174,6 +174,7 @@ class Session:
     integrity_hash: str | None = None
     tag: str | None = None
     capture_source: str | None = None
+    usage: dict[str, int] | None = None  # token usage (informational, not sealed)
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
@@ -193,6 +194,8 @@ class Session:
             result["tag"] = self.tag
         if self.capture_source is not None:
             result["captureSource"] = self.capture_source
+        if self.usage is not None:
+            result["usage"] = self.usage
         return result
 
     @classmethod
@@ -212,4 +215,5 @@ class Session:
             integrity_hash=data.get("integrityHash"),
             tag=data.get("tag"),
             capture_source=data.get("captureSource"),
+            usage=data.get("usage"),
         )

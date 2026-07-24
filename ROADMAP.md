@@ -54,8 +54,10 @@ a spec + suggest an ADR and move on — don't guess.
       `specs/lossless-command-capture/spec.md` (auditd-first + eBPF backend, session-scoped,
       opt-in `--capture kernel`, graceful fallback, honesty contract). ADR suggested:
       `kernel-command-capture-backend`. Implementation deferred (root-requiring, platform-heavy).
-- [ ] **9. Cost/usage tracking** — estimate per-session token/compute from OTel
-      `gen_ai.usage.*` attributes (depends on #4).
+- [x] **9. Cost/usage tracking** — `extract_usage` reads `gen_ai.usage.*` tokens from
+      OTel spans; `spans_to_session` aggregates input/output/total onto `Session.usage`;
+      reports show a Token Usage section. Tokens are factual; dollar cost = tokens × your
+      model's rate (not guessed).
 - [ ] **10. Prompt/reasoning capture (opt-in)** — spec only first (privacy-sensitive);
       requires explicit opt-in and redaction.
 
