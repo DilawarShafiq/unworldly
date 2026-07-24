@@ -47,8 +47,9 @@ a spec + suggest an ADR and move on — don't guess.
       in-process framework via `sys.modules` (Claude Agent SDK, Google ADK,
       LangGraph, CrewAI, AutoGen, LlamaIndex, OpenAI Agents SDK). `AgentTraceRecorder`
       auto-labels identity when no name is given. Honest: only "in use", not "installed".
-- [ ] **7. `unworldly report` completeness banner** — surface `capture_source` +
-      an explicit "what this log could NOT see" note in md/terminal reports.
+- [x] **7. Completeness banner** — md/terminal reports show a Capture Coverage
+      section (done in item 2); SARIF export now carries `unworldly/captureSource`
+      + `unworldly/captureCoverage` into GitHub Code Scanning.
 - [ ] **8. eBPF/auditd lossless command capture (Linux)** — spec first (ADR), then
       implement behind an optional extra; removes reliance on shell rc hooks.
 - [ ] **9. Cost/usage tracking** — estimate per-session token/compute from OTel

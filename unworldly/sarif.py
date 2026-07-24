@@ -124,6 +124,10 @@ def _to_sarif(session: Session) -> dict:  # type: ignore[type-arg]
 
         results.append(result)
 
+    from .report import capture_coverage
+
+    capture_label, capture_note = capture_coverage(session.capture_source)
+
     return {
         "version": "2.1.0",
         "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
@@ -148,9 +152,15 @@ def _to_sarif(session: Session) -> dict:  # type: ignore[type-arg]
                             "unworldly/directory": session.directory,
                             "unworldly/riskScore": session.summary.risk_score,
                             "unworldly/agent": session.agent.name if session.agent else "unknown",
+                            "unworldly/captureSource": capture_label,
+                            "unworldly/captureCoverage": capture_note,
                         },
                     }
                 ],
+                "properties": {
+                    "unworldly/captureSource": capture_label,
+                    "unworldly/captureCoverage": capture_note,
+                },
             }
         ],
     }

@@ -39,6 +39,15 @@ def test_sarif_tool_name() -> None:
     assert sarif["runs"][0]["tool"]["driver"]["name"] == "Unworldly"
 
 
+def test_sarif_includes_capture_coverage() -> None:
+    run = _to_sarif(_make_session([]))["runs"][0]
+    # Coverage provenance travels into GitHub Code Scanning.
+    assert "unworldly/captureCoverage" in run["properties"]
+    assert run["properties"]["unworldly/captureSource"]
+    inv_props = run["invocations"][0]["properties"]
+    assert "unworldly/captureCoverage" in inv_props
+
+
 def test_safe_events_excluded() -> None:
     events = [_evt("README.md", RiskLevel.SAFE)]
     sarif = _to_sarif(_make_session(events))
