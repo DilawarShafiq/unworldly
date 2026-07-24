@@ -218,6 +218,22 @@ Save as `.unworldly/config.json` in your project root.
 - **Open-source maintainers** reviewing AI-generated pull requests
 - **Anyone** who believes AI agents should be observable and accountable
 
+
+## Troubleshooting / FAQ
+
+**`unworldly watch` shows nothing — did you start it *before* the agent?**  
+Yes. Recording is passive and only captures events that happen while the watcher is running. Start `unworldly watch` in one terminal first, then launch your AI agent in another. If you start the agent first, earlier actions are never recorded.
+
+**Which operating systems are supported?**  
+macOS, Linux, and Windows. Unworldly runs anywhere Python 3.10+ runs (see the Python badge above). Platform-specific helpers (for example desktop alerts) degrade gracefully when unavailable.
+
+**Where is recorded data stored, and how do I clear it?**  
+Sessions are stored under `.unworldly/sessions/` in the watched project directory (JSON files). List them with `unworldly list`. To clear history, delete that folder (or individual session files) when you no longer need the audit trail — there is no cloud copy.
+
+**How do I verify a session was not tampered with?**  
+Run `unworldly verify` (optionally with a session id). Exit code `0` means the SHA-256 hash chain and session seal are intact; exit code `1` means the chain was broken or the seal does not match.
+
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). We welcome PRs — especially new agent detections, risk patterns, and platform fixes.
