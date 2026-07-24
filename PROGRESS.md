@@ -15,5 +15,6 @@ Self-paced development toward the vision in `ROADMAP.md`.
 | 2026-07-24T19:28Z | Item 5: `unworldly mcp-proxy` — records MCP `tools/call` traffic, no agent change (`mcp_proxy.py` + 7 tests) | ✅ committed, 298 tests |
 | 2026-07-24T19:46Z | Item 6: `detect_sdk_agent()` via sys.modules + recorder auto-labels identity (6 tests) | ✅ committed, 304 tests |
 | 2026-07-24T20:04Z | Item 7: capture coverage into SARIF run/invocation props (reports already covered in item 2) (+1 test) | ✅ committed, 305 tests |
+| 2026-07-24T20:21Z | Item 8 (spec): `specs/lossless-command-capture/spec.md` — kernel exec capture (auditd/eBPF) + ADR suggestion; impl deferred | ✅ committed (docs) |
 
-_Next: ROADMAP item 8 — eBPF/auditd lossless command capture (Linux): spec first + ADR suggestion (no heavy impl in-loop)._
+_Next: ROADMAP item 9 — cost/usage tracking from OTel gen_ai.usage.* attributes (builds on item 4)._

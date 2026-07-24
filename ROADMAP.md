@@ -50,8 +50,10 @@ a spec + suggest an ADR and move on — don't guess.
 - [x] **7. Completeness banner** — md/terminal reports show a Capture Coverage
       section (done in item 2); SARIF export now carries `unworldly/captureSource`
       + `unworldly/captureCoverage` into GitHub Code Scanning.
-- [ ] **8. eBPF/auditd lossless command capture (Linux)** — spec first (ADR), then
-      implement behind an optional extra; removes reliance on shell rc hooks.
+- [x] **8. eBPF/auditd lossless command capture (Linux)** — SPEC done:
+      `specs/lossless-command-capture/spec.md` (auditd-first + eBPF backend, session-scoped,
+      opt-in `--capture kernel`, graceful fallback, honesty contract). ADR suggested:
+      `kernel-command-capture-backend`. Implementation deferred (root-requiring, platform-heavy).
 - [ ] **9. Cost/usage tracking** — estimate per-session token/compute from OTel
       `gen_ai.usage.*` attributes (depends on #4).
 - [ ] **10. Prompt/reasoning capture (opt-in)** — spec only first (privacy-sensitive);
