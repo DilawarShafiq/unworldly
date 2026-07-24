@@ -2,6 +2,20 @@
 
 All notable changes to Unworldly are documented here.
 
+## [0.6.0] - 2026-07-24
+
+### Added
+- **Lossless command capture (shell hook)**: `unworldly hook install` adds a `preexec` hook (bash/zsh/pwsh) that records every command *before it runs*, fixing the ~89% miss rate of the 500ms poller. New `unworldly watch --capture poll|hook|both` and `unworldly hook install|uninstall|status|print`.
+- **Agent decision-trail capture (SDK/custom agents)**: `AgentTraceRecorder` + `@trace_tool` decorator record an agent's in-process tool calls into the same sealed, hash-chained session as file/command events — for OpenAI Agents SDK, Google ADK, LangGraph, and custom loops. `assess_tool_risk` heuristic (network/egress, deletes, credential access → danger) with explicit `risk=` override.
+- **MCP capture**: `MCPCaptureProxy` wraps an MCP `ClientSession`, logging every `call_tool` then forwarding it unchanged.
+- **Capture provenance**: `Session.capture_source` records which capture layer produced a log (honesty/completeness contract).
+- **New modules**: `shell_hook.py`, `agent_trace.py`, `_version.py`. SDD spec `specs/agent-instrumentation/spec.md` (capture layers L1–L4).
+- 44+ new tests (shell hook, agent trace, version-consistency guard).
+
+### Changed
+- **Honest positioning**: README repositioned as "the black box for AI **coding agents**"; added a "What it captures — and what it can't see" coverage table; dropped the "any AI agent" overclaim.
+- **Single-source versioning**: version now defined once in `unworldly/_version.py` and read dynamically by pyproject, CLI, session, banner, SARIF, and alerts (removes 4-way drift). Banner box auto-aligns to any version length.
+
 ## [0.5.0] - 2026-05-21
 
 ### Added

@@ -18,8 +18,10 @@ class TestDisplay:
             assert "UNWORLDLY" in output
 
         def test_contain_version(self):
+            from unworldly._version import __version__
+
             output = banner()
-            assert "v0.5.0" in output
+            assert f"v{__version__}" in output
 
         def test_contain_tagline(self):
             output = banner()

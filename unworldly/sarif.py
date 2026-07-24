@@ -10,6 +10,7 @@ import json
 import os
 from datetime import datetime
 
+from ._version import __version__
 from .session import load_session
 from .types import RiskLevel, Session
 
@@ -131,7 +132,7 @@ def _to_sarif(session: Session) -> dict:  # type: ignore[type-arg]
                 "tool": {
                     "driver": {
                         "name": "Unworldly",
-                        "version": "0.5.0",
+                        "version": __version__,
                         "informationUri": "https://github.com/DilawarShafiq/unworldly",
                         "rules": _RULES,
                     }

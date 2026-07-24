@@ -6,6 +6,7 @@ event formatting, and session summaries.
 
 from __future__ import annotations
 
+from ._version import __version__
 from .integrity import VerifyResult
 from .types import AgentInfo, EventType, RiskLevel, SessionSummary
 
@@ -39,12 +40,20 @@ def banner() -> str:
     gray = "\033[90m"
     reset = "\033[0m"
 
+    # Compute padding from the border width so the box stays aligned for any
+    # version length (single source of truth: unworldly._version).
+    inner = 51
+    title_plain = f"  UNWORLDLY v{__version__}"
+    subtitle_plain = "  The Flight Recorder for AI Agents"
+    title_pad = " " * max(0, inner - len(title_plain))
+    subtitle_pad = " " * max(0, inner - len(subtitle_plain))
+
     lines = [
         "",
-        f"{red_bold}  ╔═══════════════════════════════════════════════════╗{reset}",
-        f"{red_bold}  ║{reset}{white_bold}  UNWORLDLY{reset}{gray} v0.5.0{reset}{red_bold}                            ║{reset}",  # noqa: E501
-        f"{red_bold}  ║{reset}{gray}  The Flight Recorder for AI Agents{reset}{red_bold}              ║{reset}",
-        f"{red_bold}  ╚═══════════════════════════════════════════════════╝{reset}",
+        f"{red_bold}  ╔{'═' * inner}╗{reset}",
+        f"{red_bold}  ║{reset}{white_bold}  UNWORLDLY{reset}{gray} v{__version__}{reset}{title_pad}{red_bold}║{reset}",
+        f"{red_bold}  ║{reset}{gray}{subtitle_plain}{reset}{subtitle_pad}{red_bold}║{reset}",
+        f"{red_bold}  ╚{'═' * inner}╝{reset}",
         "",
     ]
     return "\n".join(lines)

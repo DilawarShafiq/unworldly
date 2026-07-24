@@ -7,6 +7,7 @@ import sys
 
 import click
 
+from ._version import __version__
 from .display import banner, verify_display
 from .integrity import verify_session
 from .replay import list_command, replay, touched_command
@@ -16,7 +17,7 @@ from .watcher import watch
 
 
 @click.group()
-@click.version_option(version="0.5.0", prog_name="unworldly")
+@click.version_option(version=__version__, prog_name="unworldly")
 def cli() -> None:
     """The flight recorder for AI agents.
 

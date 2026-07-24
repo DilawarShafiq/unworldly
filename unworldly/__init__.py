@@ -42,9 +42,10 @@ from .types import (
 )
 from .watcher import watch
 
-__version__ = "0.5.0"
+from ._version import __version__
 
 __all__ = [
+    "__version__",
     # Core functions
     "watch",
     "replay",

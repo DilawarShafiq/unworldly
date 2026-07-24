@@ -11,6 +11,7 @@ import os
 import secrets
 from datetime import datetime, timezone
 
+from ._version import __version__
 from .integrity import compute_session_hash, get_last_hash, sign_event
 from .risk import calculate_risk_score
 from .types import Session, SessionSummary, WatchEvent
@@ -33,7 +34,7 @@ def ensure_sessions_dir(base_dir: str) -> str:
 def create_session(directory: str, tag: str | None = None) -> Session:
     """Create a new empty session."""
     return Session(
-        version="0.5.0",
+        version=__version__,
         id=generate_id(),
         start_time=datetime.now(timezone.utc).isoformat(),
         end_time="",

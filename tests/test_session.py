@@ -49,8 +49,10 @@ class TestSession:
         assert os.path.exists(os.path.join(self.tmp_dir, ".unworldly", "sessions"))
 
     def test_create_session_correct_structure(self):
+        from unworldly._version import __version__
+
         session = create_session("/test/dir")
-        assert session.version == "0.5.0"
+        assert session.version == __version__
         assert re.match(r"^[0-9a-f]{8}$", session.id)
         assert session.start_time
         assert session.end_time == ""

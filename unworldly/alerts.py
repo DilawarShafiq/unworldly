@@ -13,6 +13,8 @@ import urllib.error
 import urllib.request
 from typing import TYPE_CHECKING
 
+from ._version import __version__
+
 if TYPE_CHECKING:
     from .types import Session, WatchEvent
 
@@ -36,7 +38,7 @@ def _webhook(url: str, event: WatchEvent, session: Session) -> None:
     req = urllib.request.Request(
         url,
         data=data,
-        headers={"Content-Type": "application/json", "User-Agent": "unworldly/0.5.0"},
+        headers={"Content-Type": "application/json", "User-Agent": f"unworldly/{__version__}"},
         method="POST",
     )
     try:
