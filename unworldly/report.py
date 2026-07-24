@@ -14,6 +14,39 @@ from .session import load_session
 from .types import Session, WatchEvent
 
 
+def capture_coverage(capture_source: str | None) -> tuple[str, str]:
+    """Map a session's capture source to a (label, honest coverage note).
+
+    A sealed log is only as trustworthy as what it could see; every report
+    states its coverage scope so an incomplete log is never mistaken for a
+    complete one (FR-007 / capture-honesty contract).
+    """
+    if capture_source is None:
+        return (
+            "Filesystem + shell (watch)",
+            "File changes and shell commands on this machine. Does NOT include the agent's "
+            "prompts/reasoning, in-process SDK tool calls, or actions taken off this machine.",
+        )
+    mapping: dict[str, tuple[str, str]] = {
+        "sdk-trace": (
+            "SDK tool-call trace",
+            "In-process tool calls the agent made (decision trail). Does NOT include file/shell "
+            "activity unless a watch session also ran.",
+        ),
+        "mcp": (
+            "MCP tool-call capture",
+            "Tool calls routed through MCP. Does NOT include file/shell activity or non-MCP tools.",
+        ),
+        "otel": (
+            "OpenTelemetry GenAI",
+            "Tool/model spans emitted by the agent. Coverage depends on what the agent instrumented.",
+        ),
+    }
+    if capture_source in mapping:
+        return mapping[capture_source]
+    return (capture_source, f"Captured via '{capture_source}'. Coverage scope not further specified.")
+
+
 def _group_by_risk(events: list[WatchEvent]) -> dict[str, list[WatchEvent]]:
     """Group events by their risk level."""
     result: dict[str, list[WatchEvent]] = {}
@@ -50,6 +83,8 @@ def _generate_markdown(session: Session) -> str:
     if session.agent:
         agent_row = f"| Agent | {session.agent.name} ({session.agent.detected_via}) |\n"
 
+    capture_label, capture_note = capture_coverage(session.capture_source)
+
     integrity_issues = ""
     if integrity.errors:
         issues = "\n".join(f"- {e}" for e in integrity.errors)
@@ -71,7 +106,12 @@ def _generate_markdown(session: Session) -> str:
 | Ended | {end_date} |
 | Total Events | {summary.total_events} |
 | Risk Score | **{summary.risk_score}/10** |
+| Capture | {capture_label} |
 {agent_row}
+## Capture Coverage
+
+> **{capture_label}.** {capture_note}
+
 ## Integrity Verification
 
 | Check | Status |
@@ -205,6 +245,9 @@ def report(
     print(f"  Recorded:  {gray}{start_str}{reset}")
     if session.agent:
         print(f"  Agent:     {cyan}{session.agent.name}{reset} {gray}({session.agent.detected_via}){reset}")
+    capture_label, capture_note = capture_coverage(session.capture_source)
+    print(f"  Capture:   {white}{capture_label}{reset}")
+    print(f"  {gray}Coverage:  {capture_note}{reset}")
     print("")
 
     # Integrity verification

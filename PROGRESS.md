@@ -9,5 +9,6 @@ Self-paced development toward the vision in `ROADMAP.md`.
 |---|---|---|
 | 2026-07-24T17:51Z | Set up loop, ROADMAP, PROGRESS; v0.6.0 versioning | ✅ committed, 259 tests |
 | 2026-07-24T18:15Z | Item 1: `unworldly doctor` — per-machine capture diagnostics (`doctor.py` + CLI + 8 tests) | ✅ committed, 267 tests |
+| 2026-07-24T18:33Z | Item 2: capture-coverage provenance in md + terminal reports (`capture_coverage` + 7 tests) | ✅ committed, 274 tests |
 
-_Next: ROADMAP item 2 — capture provenance in report/replay._
+_Next: ROADMAP item 3 — sensitive-argument redaction in agent_trace._

@@ -29,7 +29,7 @@ a spec + suggest an ADR and move on — don't guess.
 - [x] **1. `unworldly doctor`** — diagnostics: which capture layers are active,
       is the shell hook installed, is `wmic`/`ps` available, poll-mode coverage
       warning. Honest self-assessment of what *this* machine will capture.
-- [ ] **2. Capture provenance in report/replay** — reports state the coverage
+- [x] **2. Capture provenance in report/replay** — reports state the coverage
       scope of the session's capture layer (US4 / FR-007 acceptance #2).
 - [ ] **3. Sensitive-argument redaction** in `agent_trace` — redact tokens, keys,
       emails, and long blobs in tool-call params before they hit disk (privacy NFR).
