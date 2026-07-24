@@ -21,6 +21,7 @@ from .agent_trace import (
     AgentTraceRecorder,
     MCPCaptureProxy,
     assess_tool_risk,
+    redact_params,
     trace_tool,
 )
 from .shell_hook import (
@@ -96,4 +97,5 @@ __all__ = [
     "MCPCaptureProxy",
     "trace_tool",
     "assess_tool_risk",
+    "redact_params",
 ]

@@ -23,6 +23,7 @@ import contextlib
 import functools
 import json
 import os
+import re
 from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any, TypeVar
@@ -42,6 +43,46 @@ _DANGER_HINTS = (
 _NETWORK_HINTS = ("http", "https", "fetch", "request", "curl", "webhook", "upload", "post", "send", "email")
 _WRITE_HINTS = ("write", "create", "update", "insert", "put", "patch", "install", "deploy", "commit", "modify")
 _READ_HINTS = ("read", "get", "list", "search", "query", "fetch_row", "select", "describe", "count")
+
+
+REDACTED = "***REDACTED***"
+
+# Argument keys whose *value* is sensitive regardless of content.
+_SENSITIVE_KEY = re.compile(
+    r"(?i)(pass(word|wd)?|secret|token|api[_-]?key|apikey|access[_-]?key|"
+    r"private[_-]?key|credential|authorization|auth|ssn|card|cvv)"
+)
+_EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
+_BEARER = re.compile(r"(?i)bearer\s+[\w.\-]+")
+# A long high-entropy run (base64/hex/JWT-ish) — likely a key or token.
+_LONG_BLOB = re.compile(r"[A-Za-z0-9+/=_\-]{32,}")
+
+
+def _redact_str(value: str) -> str:
+    value = _BEARER.sub(f"Bearer {REDACTED}", value)
+    value = _EMAIL.sub(REDACTED, value)
+    value = _LONG_BLOB.sub(REDACTED, value)
+    return value
+
+
+def redact_params(obj: Any) -> Any:
+    """Recursively redact secrets from tool-call arguments before they're stored.
+
+    Redacts values under sensitive keys wholesale, and scrubs emails, bearer
+    tokens, and long high-entropy blobs from any string. Risk is assessed on the
+    *original* arguments (see :meth:`AgentTraceRecorder.record_tool_call`), so
+    redaction never hides a danger signal.
+    """
+    if isinstance(obj, dict):
+        return {
+            k: (REDACTED if _SENSITIVE_KEY.search(str(k)) else redact_params(v))
+            for k, v in obj.items()
+        }
+    if isinstance(obj, (list, tuple)):
+        return [redact_params(x) for x in obj]
+    if isinstance(obj, str):
+        return _redact_str(obj)
+    return obj
 
 
 def assess_tool_risk(tool: str, params: Any = None) -> tuple[RiskLevel, str]:
@@ -98,8 +139,10 @@ class AgentTraceRecorder:
         agent_name: str | None = None,
         tag: str | None = None,
         capture_source: str = "sdk-trace",
+        redact: bool = True,
     ) -> None:
         self.abs_dir = os.path.abspath(directory)
+        self.redact = redact
         self.session: Session = create_session(self.abs_dir, tag=tag)
         self.session.capture_source = capture_source
         if agent_name:
@@ -119,11 +162,14 @@ class AgentTraceRecorder:
         If ``risk`` is None, a heuristic risk is assigned (see
         :func:`assess_tool_risk`).
         """
+        # Assess risk on the ORIGINAL arguments so redaction can't hide a
+        # danger signal, then redact for storage.
         if risk is None:
             risk, heuristic_reason = assess_tool_risk(tool, params)
             reason = reason or heuristic_reason
 
-        preview = _preview(params)
+        stored_params = redact_params(params) if self.redact else params
+        preview = _preview(stored_params)
         command_str = f"{tool}({preview})" if preview else f"{tool}()"
         command = CommandInfo(
             executable=tool,
