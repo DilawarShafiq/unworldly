@@ -273,6 +273,22 @@ def collect(spans_file: str, agent_name: str | None) -> None:
     click.echo("  Review: unworldly report | verify | replay")
 
 
+# ── mcp-proxy ───────────────────────────────────────────────────────────────────
+
+@cli.command(name="mcp-proxy", context_settings={"ignore_unknown_options": True})
+@click.option("--agent", "agent_name", default=None, help="Label the session with this agent name.")
+@click.argument("target", nargs=-1, required=True)
+def mcp_proxy(agent_name: str | None, target: tuple[str, ...]) -> None:
+    """Proxy an MCP server, recording every tool call. No agent code changes.
+
+    Example: unworldly mcp-proxy -- python my_mcp_server.py
+    """
+    from .mcp_proxy import run_stdio_proxy
+
+    code = run_stdio_proxy(list(target), directory=os.getcwd(), agent_name=agent_name)
+    sys.exit(code)
+
+
 # ── doctor ────────────────────────────────────────────────────────────────────
 
 @cli.command()

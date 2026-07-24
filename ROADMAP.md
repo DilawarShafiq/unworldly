@@ -39,8 +39,10 @@ a spec + suggest an ADR and move on — don't guess.
       DONE: pure span→event mapping (`otel_ingest.py`), `spans_to_session`, file
       ingestion + `unworldly collect <spans.json>`, redaction + risk reuse, tests.
       REMAINING: live OTLP/gRPC receiver endpoint (separate, heavier; needs deps).
-- [ ] **5. Standalone MCP proxy CLI** — `unworldly mcp-proxy --target <server>` so
-      MCP capture needs no code change in the agent.
+- [x] **5. Standalone MCP proxy CLI** — `unworldly mcp-proxy -- <server cmd>` proxies
+      MCP stdio, recording every `tools/call` (risk + redaction), no agent code
+      change. Interceptor core fully tested; stdio pump is thin plumbing
+      (integration-untested live).
 - [ ] **6. Agent detection for SDK agents** — env/markers for OpenAI Agents SDK,
       Google ADK, LangGraph, so `AgentTraceRecorder` auto-labels identity.
 - [ ] **7. `unworldly report` completeness banner** — surface `capture_source` +
