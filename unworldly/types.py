@@ -173,6 +173,7 @@ class Session:
     agent: AgentInfo | None = None
     integrity_hash: str | None = None
     tag: str | None = None
+    capture_source: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
@@ -190,6 +191,8 @@ class Session:
             result["integrityHash"] = self.integrity_hash
         if self.tag is not None:
             result["tag"] = self.tag
+        if self.capture_source is not None:
+            result["captureSource"] = self.capture_source
         return result
 
     @classmethod
@@ -208,4 +211,5 @@ class Session:
             agent=agent,
             integrity_hash=data.get("integrityHash"),
             tag=data.get("tag"),
+            capture_source=data.get("captureSource"),
         )

@@ -122,9 +122,9 @@ Being honest about coverage is a feature, not a footnote — a sealed audit trai
 | File create / modify / delete in the watched project | ✅ Reliable | `watchdog` filesystem events |
 | Shell commands — **shell-hook mode** *(recommended)* | ✅ Lossless | A `preexec` hook logs every command before it runs |
 | Shell commands — **poll mode** *(default, no setup)* | ⚠️ Best-effort | Polls the process list; **short-lived commands can be missed** |
-| The agent's prompts, reasoning, or LLM API calls | ❌ Not visible | No trace on disk or in the process table |
-| In-process SDK/tool calls (OpenAI Agents SDK, Google ADK, LangGraph) | ❌ Not visible | Needs [MCP/OTel capture](#roadmap) |
-| No-code / cloud agents (n8n, Zapier, Make) | ❌ Out of scope | Runs off your machine entirely |
+| In-process SDK/tool calls (OpenAI Agents SDK, Google ADK, LangGraph) | ✅ Opt-in | [Wrap your tools](#recording-sdk--custom-agents) with the trace recorder / MCP proxy |
+| The agent's prompts, reasoning, or LLM API calls | ❌ Not visible | No trace on disk; verbatim prompt capture is deliberately out of scope (privacy) |
+| No-code / cloud agents (n8n, Zapier, Make) | ⚠️ Via OTel *(planned)* | If the platform exports OpenTelemetry GenAI spans — see [roadmap](#roadmap) |
 
 **Why poll mode is best-effort:** the default monitor samples the OS process list on an interval, so a command that starts and finishes between samples is never seen. For a complete, lossless command log, enable shell-hook mode:
 
@@ -133,6 +133,43 @@ unworldly hook install     # adds a preexec hook to your shell rc (bash/zsh/pwsh
 ```
 
 If you need to capture what an agent *decides* (its tool calls), not just its side-effects on your machine, that's the [MCP capture path on the roadmap](#roadmap).
+
+## Recording SDK / custom agents
+
+Agents built with an SDK do their work as **in-process tool calls** that never
+touch your filesystem — so file/command monitoring can't see them. Wrap your
+tools with the trace recorder to capture the agent's *decision trail* into the
+same sealed, verifiable session:
+
+```python
+from unworldly import AgentTraceRecorder, trace_tool
+
+rec = AgentTraceRecorder(agent_name="support-bot")
+
+@trace_tool(rec)                       # every call is recorded, then runs
+def refund_customer(order_id: str):
+    ...
+
+refund_customer("A-1001")              # → recorded as a DANGER tool call
+rec.close()                            # seals the session
+
+# Same tools as file/command sessions:
+#   unworldly verify   unworldly report   unworldly replay
+```
+
+Consuming tools over **MCP**? Wrap the session instead — every `call_tool` is
+logged, then forwarded unchanged:
+
+```python
+from unworldly import AgentTraceRecorder, MCPCaptureProxy
+
+session = MCPCaptureProxy(mcp_client_session, AgentTraceRecorder(agent_name="bot"))
+```
+
+Tool calls are risk-scored heuristically (network/egress, deletes, credential
+access → **danger**), and you can pass an explicit `risk=` to override. See
+[`specs/agent-instrumentation/spec.md`](specs/agent-instrumentation/spec.md) for
+the full capture-layer design.
 
 ## How It Differs
 
@@ -236,8 +273,9 @@ Save as `.unworldly/config.json` in your project root.
 Closing the gap between "records side-effects on your machine" and "records what the agent actually did":
 
 - [x] **Shell-hook capture** — Lossless command logging via `preexec` (fixes poll-mode misses) — `unworldly hook install`
-- [ ] **MCP capture** — Run Unworldly as an MCP server that logs every tool call, so SDK-built and custom agents produce a real decision trail (not just OS side-effects)
-- [ ] **OpenTelemetry GenAI ingestion** — Accept OTel GenAI spans so agents on the OpenAI Agents SDK / Google ADK / LangGraph can stream their traces in
+- [x] **Tool-call trace capture** — Record SDK/custom agents' tool calls into a sealed session ([usage](#recording-sdk--custom-agents))
+- [x] **MCP capture** — `MCPCaptureProxy` logs every `call_tool` an agent makes, then forwards it — a real decision trail, not just OS side-effects
+- [ ] **OpenTelemetry GenAI ingestion** — Accept OTel GenAI spans so agents on the OpenAI Agents SDK / Google ADK / LangGraph (and no-code platforms with OTel export) can stream their traces in
 - [ ] **CI/CD Integration** — GitHub Action to audit AI-generated PRs
 - [x] **PHI Detection** — HIPAA-specific patterns for healthcare environments (`--hipaa`)
 - [ ] **Web Dashboard** — Browser-based session viewer with search and filtering

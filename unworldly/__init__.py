@@ -17,6 +17,12 @@ from .replay import replay
 from .report import report
 from .sarif import export_sarif
 from .snapshot import snapshot_before, snapshot_after
+from .agent_trace import (
+    AgentTraceRecorder,
+    MCPCaptureProxy,
+    assess_tool_risk,
+    trace_tool,
+)
 from .shell_hook import (
     ShellHookMonitor,
     create_shell_hook_monitor,
@@ -84,4 +90,9 @@ __all__ = [
     "install_hook",
     "uninstall_hook",
     "parse_hook_line",
+    # Agent tool-call trace (L2/L3)
+    "AgentTraceRecorder",
+    "MCPCaptureProxy",
+    "trace_tool",
+    "assess_tool_risk",
 ]
