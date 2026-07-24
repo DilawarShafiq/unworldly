@@ -32,12 +32,76 @@ def cli() -> None:
 @click.option("--hipaa", is_flag=True, default=False, help="Enable HIPAA PHI detection patterns.")
 @click.option("--tag", default=None, help="Label this session (e.g. pr-456, sprint-3).")
 @click.option("--on-danger", "on_danger", default=None, help="Alert on danger events: a webhook URL or 'desktop'.")
-def watch_cmd(directory: str, hipaa: bool, tag: str | None, on_danger: str | None) -> None:
+@click.option(
+    "--capture",
+    type=click.Choice(["poll", "hook", "both"]),
+    default="poll",
+    help="Command capture: poll (default, best-effort), hook (lossless, needs `hook install`), both.",
+)
+def watch_cmd(directory: str, hipaa: bool, tag: str | None, on_danger: str | None, capture: str) -> None:
     """Start recording AI agent activity in the current directory."""
-    watch(directory, hipaa=hipaa, tag=tag, on_danger=on_danger)
+    watch(directory, hipaa=hipaa, tag=tag, on_danger=on_danger, capture=capture)
 
 
 watch_cmd.name = "watch"
+
+
+# ── hook ──────────────────────────────────────────────────────────────────────
+
+@cli.group()
+def hook() -> None:
+    """Manage the shell hook for lossless command capture.
+
+    The default `watch` poll mode samples the process list and can miss
+    short-lived commands. Installing the shell hook records every command
+    before it runs, giving a complete audit trail.
+    """
+    pass
+
+
+@hook.command(name="install")
+@click.option("--shell", type=click.Choice(["bash", "zsh", "pwsh"]), default=None, help="Target shell (auto-detected).")
+def hook_install(shell: str | None) -> None:
+    """Install the shell hook into your shell rc file."""
+    from .shell_hook import install_hook
+
+    resolved, path = install_hook(shell)
+    click.echo(f"✓ Installed unworldly {resolved} hook → {path}")
+    click.echo("  Restart your shell (or `source` the rc file), then run:")
+    click.echo("    unworldly watch --capture hook")
+
+
+@hook.command(name="uninstall")
+@click.option("--shell", type=click.Choice(["bash", "zsh", "pwsh"]), default=None, help="Target shell (auto-detected).")
+def hook_uninstall(shell: str | None) -> None:
+    """Remove the shell hook from your shell rc file."""
+    from .shell_hook import uninstall_hook
+
+    removed, path = uninstall_hook(shell)
+    if removed:
+        click.echo(f"✓ Removed unworldly hook from {path}")
+    else:
+        click.echo(f"No unworldly hook found in {path}")
+
+
+@hook.command(name="status")
+@click.option("--shell", type=click.Choice(["bash", "zsh", "pwsh"]), default=None)
+def hook_status(shell: str | None) -> None:
+    """Show whether the shell hook is installed."""
+    from .shell_hook import detect_shell, is_installed, rc_path
+
+    resolved = shell or detect_shell()
+    state = "installed" if is_installed(resolved) else "not installed"
+    click.echo(f"{resolved}: hook {state} ({rc_path(resolved)})")
+
+
+@hook.command(name="print")
+@click.option("--shell", type=click.Choice(["bash", "zsh", "pwsh"]), default=None)
+def hook_print(shell: str | None) -> None:
+    """Print the hook snippet so you can add it to your rc file manually."""
+    from .shell_hook import detect_shell, hook_snippet
+
+    click.echo(hook_snippet(shell or detect_shell()))
 
 
 # ── replay ────────────────────────────────────────────────────────────────────

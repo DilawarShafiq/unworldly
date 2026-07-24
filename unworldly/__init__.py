@@ -17,6 +17,13 @@ from .replay import replay
 from .report import report
 from .sarif import export_sarif
 from .snapshot import snapshot_before, snapshot_after
+from .shell_hook import (
+    ShellHookMonitor,
+    create_shell_hook_monitor,
+    install_hook,
+    parse_hook_line,
+    uninstall_hook,
+)
 from .risk import assess_risk, calculate_risk_score, should_ignore
 from .types import (
     AgentInfo,
@@ -71,4 +78,10 @@ __all__ = [
     "export_sarif",
     "snapshot_before",
     "snapshot_after",
+    # Shell-hook capture
+    "ShellHookMonitor",
+    "create_shell_hook_monitor",
+    "install_hook",
+    "uninstall_hook",
+    "parse_hook_line",
 ]

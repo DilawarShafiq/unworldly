@@ -9,27 +9,33 @@
 [![ISO 42001](https://img.shields.io/badge/ISO_42001-Compliant-blue.svg)](https://www.iso.org/standard/81230.html)
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
 
-**The flight recorder for AI agents.** Records everything AI agents do on your system — file changes AND shell commands — replays sessions like a DVR, flags dangerous behavior in real-time, and produces tamper-proof, ISO 42001-compliant audit trails.
+**The black box for AI coding agents.** Records the file changes and shell commands your coding agent makes on your machine — replays the session like a DVR, flags risky actions, and seals it into a tamper-proof, ISO 42001-compliant audit trail.
 
-> You wouldn't run code without logs. Why are you running AI agents without a black box?
+> You wouldn't run code without logs. Why are you letting a coding agent edit your machine without a black box?
 
 ```bash
 pip install unworldly-recorder
 unworldly watch
-# That's it. Every file change and shell command is now recorded.
+# Every file change and shell command in this project is now recorded.
 ```
+
+## What Unworldly is (and isn't)
+
+Unworldly is a **local black box for coding agents** — the ones that run *on your machine* and work by editing files and running shell commands (Claude Code, Cursor, Aider, Cline, and similar). For those, it gives you a sealed, replayable record of what touched your system.
+
+It is **not** (yet) a tracer for cloud/SDK agents whose work happens as in-process API and tool calls — those leave no file or process trace for a passive observer to see. If that's your use case, see the [MCP & OpenTelemetry roadmap](#roadmap) — that's exactly the gap we're closing next.
+
+We'd rather tell you precisely what it captures than overpromise. See **[What it captures — and what it can't see](#what-it-captures--and-what-it-cant-see)** below.
 
 ## Why Unworldly?
 
-AI agents are going autonomous. They edit files, run commands, install packages, access credentials — and **nobody is watching**. You finish a session and have no idea what actually happened. That's insane.
+Coding agents edit files, run commands, install packages, and touch credentials — often unattended. When the session ends, you have no durable, verifiable record of what actually happened on disk and in your shell. Unworldly gives you one.
 
-**Unworldly watches everything so you don't have to.**
-
-- Works with **any** agent — Claude Code, Cursor, Devin, Copilot, Windsurf, Aider, OpenClaw, Cline
-- **Zero interference** — passive monitoring, never slows down your agent
+- Built for **local coding agents** — Claude Code, Cursor, Aider, Cline, and any tool that edits files / runs shell commands
+- **Zero interference** — passive monitoring, never slows your agent down
 - **Local-first** — your data never leaves your machine. Zero cloud. Zero telemetry
-- **Tamper-proof** — SHA-256 hash chain on every event. If someone edits the logs, the chain breaks
-- **ISO 42001 compliant** — the audit trail standard for AI management systems
+- **Tamper-proof** — SHA-256 hash chain on every event. Edit the log and the chain breaks
+- **ISO 42001 aligned** — implements key audit-trail controls for AI management systems
 
 ## Quick Start
 
@@ -105,11 +111,34 @@ unworldly verify
 ```
 </details>
 
+> The recording above is illustrative — it shows how each action is **classified** once captured. How *completely* commands are captured depends on the capture mode; see the next section.
+
+## What it captures — and what it can't see
+
+Being honest about coverage is a feature, not a footnote — a sealed audit trail is only worth as much as what actually made it into the log.
+
+| Activity | Captured? | How |
+|---|---|---|
+| File create / modify / delete in the watched project | ✅ Reliable | `watchdog` filesystem events |
+| Shell commands — **shell-hook mode** *(recommended)* | ✅ Lossless | A `preexec` hook logs every command before it runs |
+| Shell commands — **poll mode** *(default, no setup)* | ⚠️ Best-effort | Polls the process list; **short-lived commands can be missed** |
+| The agent's prompts, reasoning, or LLM API calls | ❌ Not visible | No trace on disk or in the process table |
+| In-process SDK/tool calls (OpenAI Agents SDK, Google ADK, LangGraph) | ❌ Not visible | Needs [MCP/OTel capture](#roadmap) |
+| No-code / cloud agents (n8n, Zapier, Make) | ❌ Out of scope | Runs off your machine entirely |
+
+**Why poll mode is best-effort:** the default monitor samples the OS process list on an interval, so a command that starts and finishes between samples is never seen. For a complete, lossless command log, enable shell-hook mode:
+
+```bash
+unworldly hook install     # adds a preexec hook to your shell rc (bash/zsh/pwsh)
+```
+
+If you need to capture what an agent *decides* (its tool calls), not just its side-effects on your machine, that's the [MCP capture path on the roadmap](#roadmap).
+
 ## How It Differs
 
 | Feature | Unworldly | AgentOps | SecureClaw | Manual Logging |
 |---------|-----------|----------|------------|----------------|
-| Agent-agnostic | Any agent | Python SDK only | OpenClaw only | Per-agent setup |
+| Coding-agent-agnostic | Any local coding agent | Python SDK only | OpenClaw only | Per-agent setup |
 | File monitoring | Real-time | No | Audit only | Manual |
 | Command capture | Real-time | No | Pattern scan | Manual |
 | Tamper-proof logs | SHA-256 hash chain | No | No | No |
@@ -121,7 +150,7 @@ unworldly verify
 ## Features
 
 - **Watch** — Passive filesystem + process monitoring. Zero interference with the agent
-- **Command Detection** — Captures shell commands (npm install, curl, rm -rf, sudo) alongside file changes
+- **Command Detection** — Captures shell commands (npm install, curl, rm -rf, sudo) alongside file changes. Lossless in [shell-hook mode](#what-it-captures--and-what-it-cant-see); best-effort in default poll mode
 - **Agent Identity** — Auto-detects which AI agent is running (8 agents supported)
 - **Risk Engine** — Scores every action: credential access, destructive commands, network calls, mass deletions
 - **Tamper-Proof Logs** — SHA-256 hash chain on every event. Modify one event and the chain breaks
@@ -204,12 +233,14 @@ Save as `.unworldly/config.json` in your project root.
 
 ## Roadmap
 
-- [ ] **MCP Server** — Expose Unworldly as a Model Context Protocol tool
-- [ ] **Web Dashboard** — Browser-based session viewer with search and filtering
+Closing the gap between "records side-effects on your machine" and "records what the agent actually did":
+
+- [x] **Shell-hook capture** — Lossless command logging via `preexec` (fixes poll-mode misses) — `unworldly hook install`
+- [ ] **MCP capture** — Run Unworldly as an MCP server that logs every tool call, so SDK-built and custom agents produce a real decision trail (not just OS side-effects)
+- [ ] **OpenTelemetry GenAI ingestion** — Accept OTel GenAI spans so agents on the OpenAI Agents SDK / Google ADK / LangGraph can stream their traces in
 - [ ] **CI/CD Integration** — GitHub Action to audit AI-generated PRs
 - [x] **PHI Detection** — HIPAA-specific patterns for healthcare environments (`--hipaa`)
-- [ ] **Cost Tracking** — Estimate compute cost of agent sessions
-- [ ] **Plugin System** — Custom analyzers and reporters
+- [ ] **Web Dashboard** — Browser-based session viewer with search and filtering
 - [ ] **Real-time Alerts** — Webhook/Slack notifications on danger events
 
 ## Who Is This For?

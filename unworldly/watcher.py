@@ -114,7 +114,13 @@ class _UnworldlyHandler(FileSystemEventHandler):
         self._handle(event)
 
 
-def watch(directory: str, hipaa: bool = False, tag: str | None = None, on_danger: str | None = None) -> None:
+def watch(
+    directory: str,
+    hipaa: bool = False,
+    tag: str | None = None,
+    on_danger: str | None = None,
+    capture: str = "poll",
+) -> None:
     """Start recording AI agent activity in the given directory.
 
     Monitors file changes (create/modify/delete) and shell commands,
@@ -125,6 +131,10 @@ def watch(directory: str, hipaa: bool = False, tag: str | None = None, on_danger
         hipaa:     Enable HIPAA PHI detection patterns.
         tag:       Optional label for the session (e.g. "pr-456").
         on_danger: Fire an alert on every danger event — a webhook URL or "desktop".
+        capture:   Command-capture mode. "poll" (default) samples the process
+                   list and can miss short-lived commands; "hook" is lossless
+                   and reads the shell hook log (run `unworldly hook install`
+                   first); "both" runs the two together.
     """
     abs_dir = os.path.abspath(directory)
     session = create_session(abs_dir, tag=tag)
@@ -156,48 +166,64 @@ def watch(directory: str, hipaa: bool = False, tag: str | None = None, on_danger
     observer.schedule(handler, abs_dir, recursive=True)
     observer.start()
 
-    # Start command monitor
-    cmd_monitor = create_command_monitor()
-    if cmd_monitor is not None:
+    # Start command monitor(s) according to capture mode
+    def _on_command(cmd: CommandInfo) -> None:
+        risk_result = None
+        if hipaa_enabled:
+            risk_result = assess_hipaa_command_risk(cmd.executable, cmd.args)
+        if risk_result is None:
+            risk_result = assess_command_risk(cmd.executable, cmd.args, config.commands)
+        now = datetime.now(timezone.utc)
+        command_str = " ".join([cmd.executable] + cmd.args)
 
-        def _on_command(cmd: CommandInfo) -> None:
-            risk_result = None
-            if hipaa_enabled:
-                risk_result = assess_hipaa_command_risk(cmd.executable, cmd.args)
-            if risk_result is None:
-                risk_result = assess_command_risk(cmd.executable, cmd.args, config.commands)
-            now = datetime.now(timezone.utc)
-            command_str = " ".join([cmd.executable] + cmd.args)
+        watch_event = WatchEvent(
+            timestamp=now.isoformat(),
+            type=EventType.COMMAND,
+            path=command_str,
+            risk=risk_result.level,
+            reason=risk_result.reason,
+            command=cmd,
+        )
 
-            watch_event = WatchEvent(
-                timestamp=now.isoformat(),
-                type=EventType.COMMAND,
-                path=command_str,
-                risk=risk_result.level,
-                reason=risk_result.reason,
-                command=cmd,
+        add_event(session, watch_event)
+        print(
+            format_event(
+                _format_time(now),
+                EventType.COMMAND,
+                command_str,
+                risk_result.level,
+                risk_result.reason,
             )
+        )
+        if on_danger and risk_result.level.value == "danger":
+            from .alerts import fire_alert
+            fire_alert(on_danger, watch_event, session)
+        save_session(session, abs_dir)
 
-            add_event(session, watch_event)
-            print(
-                format_event(
-                    _format_time(now),
-                    EventType.COMMAND,
-                    command_str,
-                    risk_result.level,
-                    risk_result.reason,
+    yellow = "\033[33m"
+    reset = "\033[0m"
+    monitors: list[object] = []
+
+    if capture in ("poll", "both"):
+        cmd_monitor = create_command_monitor()
+        if cmd_monitor is not None:
+            cmd_monitor.start(abs_dir, _on_command)
+            monitors.append(cmd_monitor)
+        else:
+            print(f"  {yellow}⚠ Process monitoring unavailable — tracking file changes only{reset}")
+
+    if capture in ("hook", "both"):
+        from .shell_hook import create_shell_hook_monitor, is_installed
+
+        hook_monitor = create_shell_hook_monitor()
+        if hook_monitor is not None:
+            hook_monitor.start(abs_dir, _on_command)
+            monitors.append(hook_monitor)
+            if not is_installed():
+                print(
+                    f"  {yellow}⚠ Shell hook not detected — run `unworldly hook install` "
+                    f"and restart your shell for lossless command capture{reset}"
                 )
-            )
-            if on_danger and risk_result.level.value == "danger":
-                from .alerts import fire_alert
-                fire_alert(on_danger, watch_event, session)
-            save_session(session, abs_dir)
-
-        cmd_monitor.start(abs_dir, _on_command)
-    else:
-        yellow = "\033[33m"
-        reset = "\033[0m"
-        print(f"  {yellow}⚠ Process monitoring unavailable — tracking file changes only{reset}")
 
     # Pre-create session dir and save initial empty session
     ensure_sessions_dir(abs_dir)
@@ -205,8 +231,8 @@ def watch(directory: str, hipaa: bool = False, tag: str | None = None, on_danger
 
     # Graceful shutdown
     def _shutdown(signum: int | None = None, frame: object = None) -> None:
-        if cmd_monitor is not None:
-            cmd_monitor.stop()
+        for mon in monitors:
+            mon.stop()  # type: ignore[attr-defined]
         observer.stop()
         observer.join()
         session_path = save_session(session, abs_dir)
