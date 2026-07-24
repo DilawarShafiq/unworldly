@@ -26,7 +26,7 @@ a spec + suggest an ADR and move on — don't guess.
 - [x] Single-source versioning + guard tests
 
 ## Queue (toward the vision)
-- [ ] **1. `unworldly doctor`** — diagnostics: which capture layers are active,
+- [x] **1. `unworldly doctor`** — diagnostics: which capture layers are active,
       is the shell hook installed, is `wmic`/`ps` available, poll-mode coverage
       warning. Honest self-assessment of what *this* machine will capture.
 - [ ] **2. Capture provenance in report/replay** — reports state the coverage

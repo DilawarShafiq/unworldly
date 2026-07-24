@@ -254,6 +254,16 @@ def review(session: str | None, output: str | None, show_all: bool) -> None:
     review_command(session_path, output=output, show_all=show_all)
 
 
+# ── doctor ────────────────────────────────────────────────────────────────────
+
+@cli.command()
+def doctor() -> None:
+    """Diagnose which capture layers work on this machine — and what they can't see."""
+    from .doctor import format_report, run_doctor
+
+    click.echo(format_report(run_doctor(os.getcwd())))
+
+
 # ── entry point ───────────────────────────────────────────────────────────────
 
 def main() -> None:
