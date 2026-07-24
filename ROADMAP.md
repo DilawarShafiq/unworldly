@@ -33,9 +33,12 @@ a spec + suggest an ADR and move on — don't guess.
       scope of the session's capture layer (US4 / FR-007 acceptance #2).
 - [x] **3. Sensitive-argument redaction** in `agent_trace` — redact tokens, keys,
       emails, and long blobs in tool-call params before they hit disk (privacy NFR).
-- [ ] **4. L4 OpenTelemetry GenAI ingestion** — `unworldly collect`: receive OTLP
-      `gen_ai.*` spans (execute_tool / model calls) and map them to session events,
-      reaching SDK and no-code/cloud agents that export OTel. (Big; may span wakes.)
+- [~] **4. L4 OpenTelemetry GenAI ingestion** — `unworldly collect`: map OTel
+      `gen_ai.*` spans (execute_tool / model calls) to session events, reaching SDK
+      and no-code/cloud agents that export OTel.
+      DONE: pure span→event mapping (`otel_ingest.py`), `spans_to_session`, file
+      ingestion + `unworldly collect <spans.json>`, redaction + risk reuse, tests.
+      REMAINING: live OTLP/gRPC receiver endpoint (separate, heavier; needs deps).
 - [ ] **5. Standalone MCP proxy CLI** — `unworldly mcp-proxy --target <server>` so
       MCP capture needs no code change in the agent.
 - [ ] **6. Agent detection for SDK agents** — env/markers for OpenAI Agents SDK,

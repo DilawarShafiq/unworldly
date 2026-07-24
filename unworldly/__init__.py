@@ -24,6 +24,8 @@ from .agent_trace import (
     redact_params,
     trace_tool,
 )
+from .otel_ingest import ingest_file as otel_ingest_file
+from .otel_ingest import span_to_event, spans_to_session
 from .shell_hook import (
     ShellHookMonitor,
     create_shell_hook_monitor,
@@ -98,4 +100,8 @@ __all__ = [
     "trace_tool",
     "assess_tool_risk",
     "redact_params",
+    # OTel GenAI ingestion (L4)
+    "span_to_event",
+    "spans_to_session",
+    "otel_ingest_file",
 ]

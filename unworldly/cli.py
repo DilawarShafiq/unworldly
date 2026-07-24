@@ -254,6 +254,25 @@ def review(session: str | None, output: str | None, show_all: bool) -> None:
     review_command(session_path, output=output, show_all=show_all)
 
 
+# ── collect (OTel GenAI ingestion) ──────────────────────────────────────────────
+
+@cli.command()
+@click.argument("spans_file")
+@click.option("--agent", "agent_name", default=None, help="Label the session with this agent name.")
+def collect(spans_file: str, agent_name: str | None) -> None:
+    """Ingest OpenTelemetry GenAI spans from a JSON file into a sealed session.
+
+    Maps gen_ai.* tool/model spans (OpenAI Agents SDK, Google ADK, LangGraph,
+    or any OTel-exporting agent) into an Unworldly audit trail.
+    """
+    from .otel_ingest import ingest_file
+
+    session = ingest_file(spans_file, directory=os.getcwd(), agent_name=agent_name)
+    click.echo(f"✓ Ingested {session.summary.total_events} event(s) from {spans_file}")
+    click.echo(f"  Session {session.id} — risk score {session.summary.risk_score}/10")
+    click.echo("  Review: unworldly report | verify | replay")
+
+
 # ── doctor ────────────────────────────────────────────────────────────────────
 
 @cli.command()
