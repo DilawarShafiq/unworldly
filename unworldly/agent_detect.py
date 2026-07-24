@@ -78,6 +78,33 @@ KNOWN_AGENTS: list[AgentSignature] = [
 ]
 
 
+# SDK/framework agents run in-process as libraries — no env var or child
+# process. The honest signal is that their module is actually imported (in use),
+# checked via sys.modules. Ordered most-specific first.
+SDK_AGENT_MODULES: list[tuple[str, str]] = [
+    ("claude_agent_sdk", "Claude Agent SDK"),
+    ("google.adk", "Google ADK"),
+    ("langgraph", "LangGraph"),
+    ("crewai", "CrewAI"),
+    ("autogen", "AutoGen"),
+    ("llama_index", "LlamaIndex"),
+    ("agents", "OpenAI Agents SDK"),  # the `openai-agents` package imports as `agents`
+]
+
+
+def detect_sdk_agent() -> AgentInfo | None:
+    """Detect an in-process SDK/framework agent via imported modules.
+
+    Only reports a framework whose module is actually imported (in ``sys.modules``)
+    — "installed" is not the same as "in use", and a false identity claim would
+    undermine the audit trail. Returns None if none is in use.
+    """
+    for module, name in SDK_AGENT_MODULES:
+        if module in sys.modules:
+            return AgentInfo(name=name, detected_via=f"python module: {module}")
+    return None
+
+
 def detect_agent() -> AgentInfo | None:
     """Detect which AI agent is running.
 

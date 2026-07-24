@@ -43,8 +43,10 @@ a spec + suggest an ADR and move on — don't guess.
       MCP stdio, recording every `tools/call` (risk + redaction), no agent code
       change. Interceptor core fully tested; stdio pump is thin plumbing
       (integration-untested live).
-- [ ] **6. Agent detection for SDK agents** — env/markers for OpenAI Agents SDK,
-      Google ADK, LangGraph, so `AgentTraceRecorder` auto-labels identity.
+- [x] **6. Agent detection for SDK agents** — `detect_sdk_agent()` identifies the
+      in-process framework via `sys.modules` (Claude Agent SDK, Google ADK,
+      LangGraph, CrewAI, AutoGen, LlamaIndex, OpenAI Agents SDK). `AgentTraceRecorder`
+      auto-labels identity when no name is given. Honest: only "in use", not "installed".
 - [ ] **7. `unworldly report` completeness banner** — surface `capture_source` +
       an explicit "what this log could NOT see" note in md/terminal reports.
 - [ ] **8. eBPF/auditd lossless command capture (Linux)** — spec first (ADR), then

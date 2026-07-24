@@ -13,5 +13,6 @@ Self-paced development toward the vision in `ROADMAP.md`.
 | 2026-07-24T18:51Z | Item 3: `redact_params` — scrub secrets/emails/blobs before disk; risk still assessed on originals (9 tests) | ✅ committed, 283 tests |
 | 2026-07-24T19:09Z | Item 4 (partial): L4 OTel GenAI span→event mapping + `spans_to_session` + `unworldly collect` (8 tests). Live OTLP receiver still TODO | ✅ committed, 291 tests |
 | 2026-07-24T19:28Z | Item 5: `unworldly mcp-proxy` — records MCP `tools/call` traffic, no agent change (`mcp_proxy.py` + 7 tests) | ✅ committed, 298 tests |
+| 2026-07-24T19:46Z | Item 6: `detect_sdk_agent()` via sys.modules + recorder auto-labels identity (6 tests) | ✅ committed, 304 tests |
 
-_Next: ROADMAP item 6 — agent detection for SDK agents (OpenAI Agents SDK, Google ADK, LangGraph)._
+_Next: ROADMAP item 7 — `unworldly report` completeness banner (surface capture_source + "what this log could NOT see")._

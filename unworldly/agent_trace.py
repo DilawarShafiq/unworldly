@@ -147,6 +147,13 @@ class AgentTraceRecorder:
         self.session.capture_source = capture_source
         if agent_name:
             self.session.agent = AgentInfo(name=agent_name, detected_via=capture_source)
+        else:
+            # No explicit name — try to auto-identify the in-process SDK agent.
+            from .agent_detect import detect_sdk_agent
+
+            detected = detect_sdk_agent()
+            if detected is not None:
+                self.session.agent = detected
         ensure_sessions_dir(self.abs_dir)
         self.session_path: str = save_session(self.session, self.abs_dir)
 
