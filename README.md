@@ -51,6 +51,24 @@ unworldly report --format md
 unworldly verify
 ```
 
+## Shell Completion
+
+`unworldly` uses Click's built-in shell completion. After installing `unworldly-recorder`, enable tab completion for your shell:
+
+```bash
+# bash
+eval "$(_UNWORLDLY_COMPLETE=bash_source unworldly)"
+
+# zsh
+eval "$(_UNWORLDLY_COMPLETE=zsh_source unworldly)"
+
+# fish
+mkdir -p ~/.config/fish/completions
+_UNWORLDLY_COMPLETE=fish_source unworldly > ~/.config/fish/completions/unworldly.fish
+```
+
+Add the command for your shell to `~/.bashrc`, `~/.zshrc`, or your fish completions directory to make it persistent.
+
 ## Live Output
 
 <p align="center">
