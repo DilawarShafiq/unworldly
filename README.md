@@ -1,5 +1,7 @@
 # Unworldly
 
+![Unworldly: a flight recorder for AI coding agents](assets/banner.png)
+
 [![CI](https://github.com/DilawarShafiq/unworldly/actions/workflows/ci.yml/badge.svg)](https://github.com/DilawarShafiq/unworldly/actions/workflows/ci.yml)
 [![PyPI version](https://img.shields.io/pypi/v/unworldly-recorder.svg)](https://pypi.org/project/unworldly-recorder/)
 [![PyPI downloads](https://img.shields.io/pypi/dm/unworldly-recorder.svg)](https://pypi.org/project/unworldly-recorder/)
