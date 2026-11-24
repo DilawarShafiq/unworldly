@@ -6,6 +6,7 @@ process detection. Combines both into a unified event timeline.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import signal
 import sys
@@ -52,6 +53,18 @@ def _map_watchdog_event(event: FileSystemEvent) -> EventType | None:
     return None
 
 
+def _real(path: str) -> str:
+    """Resolve symlinks, without Windows' extended-length prefix.
+
+    For a file that has already vanished (e.g. a temp file renamed away), Windows'
+    realpath can return ``\\\\?\\C:\\…``, which then can't be compared with normal paths.
+    """
+    resolved = os.path.realpath(path)
+    if resolved.startswith("\\\\?\\") and not resolved.startswith("\\\\?\\UNC\\"):
+        resolved = resolved[4:]
+    return resolved
+
+
 class _UnworldlyHandler(FileSystemEventHandler):
     """Watchdog event handler that records file changes."""
 
@@ -64,6 +77,12 @@ class _UnworldlyHandler(FileSystemEventHandler):
         self.content = ContentTracker(abs_dir)
 
     def _handle(self, event: FileSystemEvent) -> None:
+        # Never let one odd event (a temp file that vanished, a path on another drive)
+        # kill the watcher thread: that would silently stop all file recording.
+        with contextlib.suppress(Exception):
+            self._record(event)
+
+    def _record(self, event: FileSystemEvent) -> None:
         if event.is_directory:
             return
 
@@ -71,7 +90,7 @@ class _UnworldlyHandler(FileSystemEventHandler):
         if event_type is None:
             return
 
-        relative_path = os.path.relpath(os.path.realpath(str(event.src_path)), self.abs_dir)
+        relative_path = os.path.relpath(_real(str(event.src_path)), self.abs_dir)
         if should_ignore(relative_path):
             return
 
@@ -160,7 +179,7 @@ _OUTSIDE_TARGETS: list[tuple[str, bool, RiskLevel, str]] = [
 
 def _inside(path: str, root: str) -> bool:
     try:
-        return os.path.commonpath([os.path.realpath(path), os.path.realpath(root)]) == os.path.realpath(root)
+        return os.path.commonpath([_real(path), _real(root)]) == _real(root)
     except ValueError:  # different drives on Windows
         return False
 
@@ -184,16 +203,22 @@ class _OutsideHandler(FileSystemEventHandler):
         self.abs_dir = abs_dir
         self.risk = risk
         self.reason = reason
-        self.only_file = os.path.normcase(os.path.realpath(only_file)) if only_file else None
+        self.only_file = os.path.normcase(_real(only_file)) if only_file else None
         self.on_danger = on_danger
 
     def _handle(self, event: FileSystemEvent) -> None:
+        # Never let one odd event (a temp file that vanished, a path on another drive)
+        # kill the watcher thread: that would silently stop all file recording.
+        with contextlib.suppress(Exception):
+            self._record(event)
+
+    def _record(self, event: FileSystemEvent) -> None:
         if event.is_directory:
             return
         event_type = _map_watchdog_event(event)
         if event_type is None:
             return
-        src = os.path.realpath(str(event.src_path))
+        src = _real(str(event.src_path))
         if self.only_file is not None and os.path.normcase(src) != self.only_file:
             return
         risk, reason = self.risk, self.reason
@@ -226,7 +251,7 @@ def schedule_outside_watches(
     observer: Any, session: Session, abs_dir: str, on_danger: str | None, home: str | None = None
 ) -> list[str]:
     """Watch the sensitive locations that exist on this machine; returns what is watched."""
-    home = os.path.realpath(home or os.path.expanduser("~"))
+    home = _real(home or os.path.expanduser("~"))
     watched: list[str] = []
     for rel, recursive, risk, reason in _OUTSIDE_TARGETS:
         target = os.path.join(home, *rel.split("/"))
@@ -273,7 +298,7 @@ def watch(
         model:     Model name to record (overrides detection).
         agent_version: Agent version to record.
     """
-    abs_dir = os.path.realpath(directory)
+    abs_dir = _real(directory)
     session = create_session(abs_dir, tag=tag, heartbeat_seconds=DEFAULT_HEARTBEAT_SECONDS)
 
     # ISO 42001 A.3.2: Detect which AI agent is running

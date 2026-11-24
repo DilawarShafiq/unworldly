@@ -2,6 +2,12 @@
 
 All notable changes to Unworldly are documented here.
 
+## [0.8.3] - 2026-11-25
+
+### Fixed
+- **File recording could stop on Windows.** When a file vanished right after being created (a temp file renamed away, including Unworldly's own atomic session save added in 0.8.2), resolving its path returned Windows' `\?\C:\…` form and the path comparison crashed the file-watcher thread, silently ending file recording for the rest of the session. Paths are now normalised, and a single bad event can no longer stop the watcher.
+- **Executables in folders with spaces** (`C:\Program Files\…`) were split at the space and recorded as `Program Files\…`. The original argument list is now kept.
+
 ## [0.8.2] - 2026-11-25
 
 ### Changed

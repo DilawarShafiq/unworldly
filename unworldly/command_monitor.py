@@ -37,6 +37,7 @@ class ProcessEntry:
     actor: str | None = None
     parents: list[str] | None = None
     own_child: bool = False  # spawned by Unworldly itself (e.g. its own `git` calls)
+    argv: list[str] | None = None  # original argument list, when the platform gives one
 
 
 class CommandMonitor:
@@ -110,7 +111,9 @@ class CommandMonitor:
                         continue
 
                     # Parse command and args
-                    parts = proc.args.strip().split()
+                    # Keep the real argument list when we have it: re-splitting a joined
+                    # string breaks paths with spaces (C:\Program Files\...).
+                    parts = proc.argv if proc.argv else proc.args.strip().split()
                     executable = parts[0] if parts else proc.command
                     args = parts[1:] if parts else []
 
@@ -182,7 +185,7 @@ class CommandMonitor:
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 continue
             self._names[pid] = name
-            entry = ProcessEntry(pid=pid, command=name, args=" ".join(cmdline) or name)
+            entry = ProcessEntry(pid=pid, command=name, args=" ".join(cmdline) or name, argv=cmdline or None)
             if ppid_of is None:
                 ppid_of = _ppid_lookup()
             self._attribute(pid, entry, ppid_of)

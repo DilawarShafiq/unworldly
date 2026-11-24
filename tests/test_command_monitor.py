@@ -127,3 +127,29 @@ def test_no_agent_known_means_actor_left_unset() -> None:
     entry = ProcessEntry(pid=123, command="x", args="x")
     monitor._attribute(123, entry, lambda pid: None)
     assert entry.actor is None
+
+
+def test_executable_path_with_spaces_is_kept_whole(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """Regression (0.8.3): `C:\\Program Files\\Docker\\docker.exe` was split at the space."""
+    import time
+
+    from unworldly.command_monitor import CommandMonitor, ProcessEntry
+
+    exe = "C:\\Program Files\\Docker\\docker.exe"
+    monitor = CommandMonitor()
+    calls = {"n": 0}
+
+    def fake_list(self):  # type: ignore[no-untyped-def]
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return []  # start-up snapshot
+        return [ProcessEntry(pid=424242, command="docker.exe", args=f"{exe} ps -a", argv=[exe, "ps", "-a"])]
+
+    monkeypatch.setattr(CommandMonitor, "_list_processes", fake_list)
+    seen: list = []  # type: ignore[type-arg]
+    monitor.start(".", seen.append)
+    deadline = time.monotonic() + 3
+    while time.monotonic() < deadline and not seen:
+        time.sleep(0.05)
+    monitor.stop()
+    assert seen and seen[0].executable.lower().endswith("docker.exe") and seen[0].args == ["ps", "-a"]
