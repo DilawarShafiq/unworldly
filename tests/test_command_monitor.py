@@ -30,17 +30,12 @@ class TestCommandMonitor:
         events = []
         monitor.start(".", lambda cmd: events.append(cmd))
 
-        # Wait for two poll cycles
-        time.sleep(1.2)
-        count = len(events)
-
-        # Wait another cycle -- should not get duplicates of existing processes
-        time.sleep(0.6)
-
+        # Several poll cycles; new system processes may appear, but no PID may repeat.
+        time.sleep(1.8)
         monitor.stop()
-        # The count should not have significantly increased from duplicate reporting
-        # (new system processes may appear, but existing ones should not repeat)
-        assert len(events) <= count + 5
+
+        pids = [cmd.pid for cmd in events]
+        assert len(pids) == len(set(pids))
 
 
 class TestSkipFilter:
