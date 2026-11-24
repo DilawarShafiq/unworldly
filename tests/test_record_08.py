@@ -238,3 +238,32 @@ class TestAgentModel:
         monkeypatch.setenv("CLAUDE_PID", "4242")
         agent = detect_agent()
         assert agent is not None and agent.name == "Claude Code" and agent.pid == 4242
+
+
+@pytest.mark.skipif(os.name == "nt", reason="creating symlinks needs extra rights on Windows")
+def test_home_behind_a_symlink_gives_clean_paths(tmp_path: Path) -> None:
+    """Regression (macOS /var -> /private/var): paths must not come out as ~/../../private/..."""
+    from watchdog.observers import Observer
+
+    from unworldly.watcher import schedule_outside_watches
+
+    real_home = tmp_path / "real-home"
+    (real_home / ".ssh").mkdir(parents=True)
+    linked_home = tmp_path / "linked-home"
+    linked_home.symlink_to(real_home, target_is_directory=True)
+    project = tmp_path / "project"
+    project.mkdir()
+    session = create_session(str(project), sign=False)
+    observer = Observer()
+    schedule_outside_watches(observer, session, str(project), None, home=str(linked_home))
+    observer.start()
+    try:
+        time.sleep(0.5)
+        (real_home / ".ssh" / "config").write_text("Host x\n", encoding="utf-8")
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline and not session.events:
+            time.sleep(0.1)
+    finally:
+        observer.stop()
+        observer.join()
+    assert session.events and session.events[0].path == "~/.ssh/config"

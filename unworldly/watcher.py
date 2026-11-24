@@ -71,7 +71,7 @@ class _UnworldlyHandler(FileSystemEventHandler):
         if event_type is None:
             return
 
-        relative_path = os.path.relpath(str(event.src_path), self.abs_dir)
+        relative_path = os.path.relpath(os.path.realpath(str(event.src_path)), self.abs_dir)
         if should_ignore(relative_path):
             return
 
@@ -160,7 +160,7 @@ _OUTSIDE_TARGETS: list[tuple[str, bool, RiskLevel, str]] = [
 
 def _inside(path: str, root: str) -> bool:
     try:
-        return os.path.commonpath([os.path.abspath(path), root]) == root
+        return os.path.commonpath([os.path.realpath(path), os.path.realpath(root)]) == os.path.realpath(root)
     except ValueError:  # different drives on Windows
         return False
 
@@ -184,7 +184,7 @@ class _OutsideHandler(FileSystemEventHandler):
         self.abs_dir = abs_dir
         self.risk = risk
         self.reason = reason
-        self.only_file = os.path.normcase(os.path.abspath(only_file)) if only_file else None
+        self.only_file = os.path.normcase(os.path.realpath(only_file)) if only_file else None
         self.on_danger = on_danger
 
     def _handle(self, event: FileSystemEvent) -> None:
@@ -193,7 +193,7 @@ class _OutsideHandler(FileSystemEventHandler):
         event_type = _map_watchdog_event(event)
         if event_type is None:
             return
-        src = os.path.abspath(str(event.src_path))
+        src = os.path.realpath(str(event.src_path))
         if self.only_file is not None and os.path.normcase(src) != self.only_file:
             return
         risk, reason = self.risk, self.reason
@@ -226,7 +226,7 @@ def schedule_outside_watches(
     observer: Any, session: Session, abs_dir: str, on_danger: str | None, home: str | None = None
 ) -> list[str]:
     """Watch the sensitive locations that exist on this machine; returns what is watched."""
-    home = os.path.abspath(home or os.path.expanduser("~"))
+    home = os.path.realpath(home or os.path.expanduser("~"))
     watched: list[str] = []
     for rel, recursive, risk, reason in _OUTSIDE_TARGETS:
         target = os.path.join(home, *rel.split("/"))
@@ -273,7 +273,7 @@ def watch(
         model:     Model name to record (overrides detection).
         agent_version: Agent version to record.
     """
-    abs_dir = os.path.abspath(directory)
+    abs_dir = os.path.realpath(directory)
     session = create_session(abs_dir, tag=tag, heartbeat_seconds=DEFAULT_HEARTBEAT_SECONDS)
 
     # ISO 42001 A.3.2: Detect which AI agent is running

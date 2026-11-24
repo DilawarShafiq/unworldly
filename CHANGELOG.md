@@ -2,6 +2,11 @@
 
 All notable changes to Unworldly are documented here.
 
+## [0.8.1] - 2026-11-25
+
+### Fixed
+- **Garbled paths behind symlinks (macOS).** When the project or home folder is reached through a symlink (on macOS, `/var` → `/private/var`), the file watcher reports the real path, and events came out as `~/../../private/var/…/.ssh/authorized_keys` or similar. `watch` now resolves real paths on both sides, so paths read `~/.ssh/authorized_keys` and `app.py` as intended.
+
 ## [0.8.0] - 2026-11-25
 
 ### Added
