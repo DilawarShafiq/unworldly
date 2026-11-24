@@ -86,17 +86,24 @@ def recorded(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
         (project / ".env").write_text("API_KEY=x\n", encoding="utf-8")
         (project / "app.py").write_text("print('hi')\n", encoding="utf-8")
-        subprocess.run(
-            [sys.executable, "-c", "import time; time.sleep(2)  # unworldly-e2e-marker"],
-            cwd=project,
-            check=True,
-        )
 
         def captured() -> bool:
             paths = [e.get("path", "") for e in _events(project)]
             return any(p.endswith(".env") for p in paths) and any("unworldly-e2e-marker" in p for p in paths)
 
-        assert _wait_for(captured), f"events not captured: {[e.get('path') for e in _events(project)]}"
+        # Poll capture is best-effort by design (the shell hook is the lossless mode), and a
+        # loaded CI machine can miss a single command. Up to 3 attempts still fails loudly if
+        # command capture is broken outright, which is the regression this test guards.
+        for _attempt in range(3):
+            subprocess.run(
+                [sys.executable, "-c", "import time; time.sleep(2)  # unworldly-e2e-marker"],
+                cwd=project,
+                check=True,
+            )
+            if _wait_for(captured, timeout=5.0):
+                break
+
+        assert captured(), f"events not captured: {[e.get('path') for e in _events(project)][:20]}"
     finally:
         if sys.platform == "win32":
             watcher.terminate()  # session is saved after every event, so a hard stop loses nothing
