@@ -75,7 +75,9 @@ Unworldly captures agents at four levels — use the one(s) that fit your agent.
 | **L3 MCP** | `unworldly mcp-proxy -- <server>` | Every MCP `tools/call` — no agent code change | Any MCP-using agent |
 | **L4 OpenTelemetry** | `unworldly collect <spans.json>` | `gen_ai.*` tool/model spans + token usage | No-code/cloud agents that export OTel |
 
-L2/L3/L4 feed the same risk scoring, secret redaction, SHA-256 hash chain, `verify`/`report`/`replay` as L1.
+L2/L3/L4 feed the same risk scoring, secret redaction, signed hash chain, `verify`/`report`/`replay` as L1.
+
+**Attribution limits, honestly:** commands are attributed to the agent through their parent processes when the agent's process is known; file changes can't be attributed by the operating system's file-watch API, so they carry no "run by" field.
 
 ## Live Output
 
@@ -204,7 +206,10 @@ access → **danger**), and you can pass an explicit `risk=` to override.
 
 - **Watch** — Passive filesystem + process monitoring. Zero interference with the agent
 - **Command Detection** — Captures shell commands (npm install, curl, rm -rf, sudo) alongside file changes. Lossless in [shell-hook mode](#what-it-captures--and-what-it-cant-see); best-effort in default poll mode
-- **Agent Identity** — Auto-detects which AI agent is running (8 agents supported)
+- **Agent Identity** — Auto-detects which AI agent is running (8 agents supported), plus its model and version when available (`--model`, `--agent-version` to set them)
+- **Who Ran It** — Every command is marked as run by the agent or by something else (e.g. you, in another terminal), by tracing its parent processes
+- **Outside the Project** — Also watches `~/.ssh`, `~/.aws`, `~/.kube`, shell startup files, PowerShell profiles and other credential files for writes (`--no-outside` to turn off). Paths only, never content
+- **What Changed** — Before/after SHA-256 of each changed file and a size-capped diff with secrets redacted. Credential files, binaries and large files are never diffed. `unworldly show <n>` prints one event in full
 - **Risk Engine** — Scores every action: credential access, destructive commands, network calls, mass deletions
 - **Tamper-Resistant Logs** — forward-secure Ed25519 signatures on every event, on top of a SHA-256 hash chain
 - **Verify** — checks every signature, the record sequence, recording gaps and the final seal. Exit code tells you if the session was tampered with

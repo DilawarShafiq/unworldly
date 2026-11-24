@@ -12,6 +12,7 @@ from typing import Any
 from .display import (
     agent_badge,
     banner,
+    event_details,
     format_event,
     replay_header,
     session_summary,
@@ -92,6 +93,8 @@ def replay(session_path: str, speed: float = 1.0) -> None:
             if delay > 0:
                 time.sleep(delay)
         print(format_event(_format_time(event.timestamp), event.type, event.path, event.risk, event.reason))
+        for line in event_details(event):
+            print(line)
 
     print(session_summary(session.summary, session_path))
 
@@ -199,6 +202,41 @@ def list_command(
 
 
 # ── Touched ──────────────────────────────────────────────────────────────────
+
+
+def show_event(session_path: str, number: int) -> bool:
+    """Print one event in full (numbered from 1, as in reports). Returns False if out of range."""
+    session = load_session(session_path)
+    if not 1 <= number <= len(session.events):
+        return False
+    e = session.events[number - 1]
+    gray, green, red, reset = "\033[90m", "\033[32m", "\033[31m", "\033[0m"
+    print(format_event(_format_time(e.timestamp), e.type, e.path, e.risk, e.reason))
+    rows: list[tuple[str, str]] = [("Event", f"#{number} of {len(session.events)}"), ("Time", e.timestamp)]
+    if e.command is not None:
+        rows.append(("Run by", e.command.actor or "unknown (agent not identified)"))
+        if e.command.parents:
+            rows.append(("Started by", " <- ".join(e.command.parents)))
+        rows.append(("Working dir", e.command.cwd))
+    if e.before_hash:
+        rows.append(("Before (sha256)", e.before_hash))
+    if e.after_hash:
+        rows.append(("After (sha256)", e.after_hash))
+    for label, value in rows:
+        print(f"  {gray}{label:<16}{reset}{value}")
+    if e.diff:
+        print()
+        for line in e.diff.splitlines():
+            if line.startswith("+") and not line.startswith("+++"):
+                print(f"  {green}{line}{reset}")
+            elif line.startswith("-") and not line.startswith("---"):
+                print(f"  {red}{line}{reset}")
+            else:
+                print(f"  {gray}{line}{reset}")
+    elif e.type.value in ("create", "modify") and e.after_hash:
+        print(f"  {gray}No diff stored (credential/sensitive file, binary, or over the size limit).{reset}")
+    print()
+    return True
 
 
 def touched_command(session_path: str) -> None:

@@ -80,3 +80,50 @@ def test_process_listing_works_on_this_platform() -> None:
     monitor = create_command_monitor()
     assert monitor is not None
     assert len(monitor._list_processes()) > 0
+
+
+def test_commands_are_attributed_to_agent_or_other() -> None:
+    """A command under the agent's process tree is actor=agent; an unrelated one is actor=other."""
+    import subprocess
+    import sys
+    import time
+
+    from unworldly.command_monitor import CommandMonitor
+
+    monitor = CommandMonitor()
+    monitor._self_pid = -1  # the test process spawns both commands; don't treat them as Unworldly's own
+    events: list = []  # type: ignore[type-arg]
+    agent = subprocess.Popen(
+        [
+            sys.executable,
+            "-c",
+            "import subprocess, sys; "
+            "subprocess.run([sys.executable, '-c', 'import time; time.sleep(3)  # agent-child'])",
+        ]
+    )
+    monitor.set_agent_roots({agent.pid})
+    monitor.start(".", events.append)
+    other = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(3)  # other-child"])
+    deadline = time.monotonic() + 8
+    found: dict[str, str | None] = {}
+    while time.monotonic() < deadline and len(found) < 2:
+        for cmd in list(events):
+            line = " ".join(cmd.args)
+            for marker in ("agent-child", "other-child"):
+                if marker in line:
+                    found[marker] = cmd.actor
+        time.sleep(0.2)
+    monitor.stop()
+    agent.wait()
+    other.wait()
+    assert found.get("agent-child") == "agent"
+    assert found.get("other-child") == "other"
+
+
+def test_no_agent_known_means_actor_left_unset() -> None:
+    from unworldly.command_monitor import CommandMonitor, ProcessEntry
+
+    monitor = CommandMonitor()
+    entry = ProcessEntry(pid=123, command="x", args="x")
+    monitor._attribute(123, entry, lambda pid: None)
+    assert entry.actor is None

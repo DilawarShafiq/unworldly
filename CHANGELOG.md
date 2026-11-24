@@ -2,6 +2,26 @@
 
 All notable changes to Unworldly are documented here.
 
+## [0.8.0] - 2026-11-25
+
+### Added
+- **Who ran it.** Each captured command is marked `agent` or `other` by tracing its parent processes to the agent's own process (Claude Code's `CLAUDE_PID`, or the agent's known process names). With no agent identified, nothing is guessed. Reports gain a "Run by" column and a count of commands not run by the agent; `replay` flags them.
+- **Outside the project.** `watch` also watches `~/.ssh`, `~/.aws`, `~/.azure`, `~/.config/gcloud`, `~/.kube`, `~/.gnupg`, `~/.docker`, shell startup files, PowerShell profiles, `~/.gitconfig`, `~/.npmrc`, `~/.pypirc` and `~/.netrc` for writes, recorded as danger (`known_hosts` as caution). Paths only, never content. `--no-outside` turns it off.
+- **What changed inside files.** File events record before/after SHA-256 and a unified diff (vs the previous version seen in the session, else the last commit), capped at 200 lines / 16 KB, with secrets redacted. Danger-level files (credentials, keys, `.env`, PHI), binaries and files over 256 KB are never diffed; files over 5 MB are hashed as `tooLarge`. All of it is signed with the event.
+- **`unworldly show <n> [session]`** prints one event in full: who ran it, parent processes, hashes and the coloured diff. Markdown reports include a File Changes section.
+- **Agent model and version**: detected from env vars (`ANTHROPIC_MODEL`, `CLAUDE_MODEL`, `OPENAI_MODEL`, `AIDER_MODEL`) or the agent's `--model` argument, or set with `watch --model / --agent-version`. Shown in `watch`, reports and the session.
+- `redact_text()` for free text (used for diffs).
+
+### Fixed
+- **Agent detection on Windows** no longer calls `wmic` (removed from newer Windows) or `tasklist`; it uses `psutil`.
+- **False identity:** having `ANTHROPIC_API_KEY` set no longer reports Claude Code. Claude Code is detected via `CLAUDECODE` / `CLAUDE_CODE_ENTRYPOINT`.
+- Unworldly's own helper processes (e.g. its `git` calls) are no longer recorded as commands.
+- Secret redaction now removes the token itself from `Authorization: Bearer …` lines.
+
+### Changed
+- Process polling fetches the parent-process table only when new processes appear (about 10 ms on Windows) and caches process names, keeping the CPU budget.
+- Fields added in 0.8 are hashed only when present, so 0.6 and 0.7 sessions still verify.
+
 ## [0.7.0] - 2026-11-25
 
 ### Added

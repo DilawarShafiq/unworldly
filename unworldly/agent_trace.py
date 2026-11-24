@@ -86,6 +86,19 @@ def _redact_str(value: str) -> str:
     return value
 
 
+# `password = "x"`, `API_KEY: x`, `token=x` … inside free text (e.g. a file diff).
+_ASSIGNMENT = re.compile(
+    r"(?i)((?:pass(?:word|wd)?|secret|token|api[_-]?key|apikey|access[_-]?key|private[_-]?key|"
+    r"credential|authorization)[\w-]*[\"']?\s*[:=]\s*)([\"']?)([^\"'\s,;]+)"
+)
+
+
+def redact_text(text: str) -> str:
+    """Redact secrets from free text such as a file diff: assignments, tokens, emails, blobs."""
+    text = _redact_str(text)  # bearer tokens first, so `Authorization: Bearer x` loses the token itself
+    return _ASSIGNMENT.sub(lambda m: f"{m.group(1)}{m.group(2)}{REDACTED}", text)
+
+
 def redact_params(obj: Any) -> Any:
     """Recursively redact secrets from tool-call arguments before they're stored.
 

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from ._version import __version__
 from .integrity import VerifyResult
-from .types import AgentInfo, EventType, RiskLevel, SessionSummary
+from .types import AgentInfo, EventType, RiskLevel, SessionSummary, WatchEvent
 
 
 def _risk_badge(level: RiskLevel) -> str:
@@ -181,13 +181,39 @@ def agent_badge(agent: AgentInfo) -> str:
     gray = "\033[90m"
     reset = "\033[0m"
 
-    return "\n".join(
-        [
-            f"{cyan}  ◉ Agent Detected: {reset}{white_bold}{agent.name}{reset}",
-            f"{gray}    via {agent.detected_via}{reset}",
-            "",
-        ]
-    )
+    lines = [
+        f"{cyan}  ◉ Agent Detected: {reset}{white_bold}{agent.name}{reset}",
+        f"{gray}    via {agent.detected_via}{reset}",
+    ]
+    details = [f"model {agent.model}" if agent.model else "", f"version {agent.version}" if agent.version else ""]
+    if any(details):
+        lines.append(f"{gray}    {' · '.join(d for d in details if d)}{reset}")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def diff_stats(diff: str) -> tuple[int, int]:
+    """(+added, -removed) line counts of a unified diff, ignoring the file headers."""
+    added = sum(1 for ln in diff.splitlines() if ln.startswith("+") and not ln.startswith("+++"))
+    removed = sum(1 for ln in diff.splitlines() if ln.startswith("-") and not ln.startswith("---"))
+    return added, removed
+
+
+def event_details(event: WatchEvent) -> list[str]:
+    """Extra replay lines for an event: who ran a command, and a diff summary."""
+    gray = "\033[90m"
+    green = "\033[32m"
+    red = "\033[31m"
+    reset = "\033[0m"
+    out: list[str] = []
+    cmd = event.command
+    if cmd is not None and cmd.actor == "other":
+        via = f" (started by {cmd.parents[0]})" if cmd.parents else ""
+        out.append(f"{gray}     ┗━ not run by the agent{via}{reset}")
+    if event.diff:
+        added, removed = diff_stats(event.diff)
+        out.append(f"{gray}     ┗━ {green}+{added}{reset} {red}-{removed}{reset}{gray} lines{reset}")
+    return out
 
 
 def verify_display(result: VerifyResult) -> str:

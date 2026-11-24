@@ -29,6 +29,10 @@ ENV = {
     "UNWORLDLY_KEY_STORE": "file",
     "UNWORLDLY_HOME": tempfile.mkdtemp(prefix="unworldly-e2e-home-"),
 }
+# A throwaway home folder, so "outside the project" watching never sees the real one.
+FAKE_HOME = Path(tempfile.mkdtemp(prefix="unworldly-e2e-userhome-"))
+(FAKE_HOME / ".ssh").mkdir()
+ENV["HOME"] = ENV["USERPROFILE"] = str(FAKE_HOME)
 
 
 def _cli(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
@@ -86,10 +90,15 @@ def recorded(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
         (project / ".env").write_text("API_KEY=x\n", encoding="utf-8")
         (project / "app.py").write_text("print('hi')\n", encoding="utf-8")
+        (FAKE_HOME / ".ssh" / "authorized_keys").write_text("ssh-ed25519 AAAA e2e\n", encoding="utf-8")
 
         def captured() -> bool:
             paths = [e.get("path", "") for e in _events(project)]
-            return any(p.endswith(".env") for p in paths) and any("unworldly-e2e-marker" in p for p in paths)
+            return (
+                any(p.endswith(".env") for p in paths)
+                and any("unworldly-e2e-marker" in p for p in paths)
+                and "~/.ssh/authorized_keys" in paths
+            )
 
         # Poll capture is best-effort by design (the shell hook is the lossless mode), and a
         # loaded CI machine can miss a single command. Up to 3 attempts still fails loudly if
@@ -177,3 +186,26 @@ def test_verify_detects_tampering(recorded: Path, tmp_path: Path) -> None:
     tampered.write_text(json.dumps(data), encoding="utf-8")
     result = _cli("verify", str(tampered), cwd=recorded)
     assert result.returncode != 0
+
+
+def test_outside_project_write_is_recorded(recorded: Path) -> None:
+    ssh = [e for e in _events(recorded) if e["path"] == "~/.ssh/authorized_keys"]
+    assert ssh and ssh[0]["risk"] == "danger" and "diff" not in ssh[0]
+
+
+def test_file_change_has_hash_and_diff(recorded: Path) -> None:
+    app = [e for e in _events(recorded) if e["path"] == "app.py" and e.get("diff")]
+    assert app and "+print('hi')" in app[0]["diff"] and len(app[0]["afterHash"]) == 64
+
+
+def test_secret_file_has_no_diff(recorded: Path) -> None:
+    env = [e for e in _events(recorded) if e["path"].endswith(".env")]
+    assert env and all("diff" not in e for e in env)
+
+
+def test_show_prints_one_event(recorded: Path) -> None:
+    number = next(i for i, e in enumerate(_events(recorded), start=1) if e.get("diff"))
+    result = _cli("show", str(number), cwd=recorded)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "After (sha256)" in result.stdout and "print('hi')" in result.stdout
+    assert _cli("show", "9999", cwd=recorded).returncode == 1

@@ -34,6 +34,9 @@ class ProcessEntry:
     pid: int
     command: str
     args: str
+    actor: str | None = None
+    parents: list[str] | None = None
+    own_child: bool = False  # spawned by Unworldly itself (e.g. its own `git` calls)
 
 
 class CommandMonitor:
@@ -51,6 +54,12 @@ class CommandMonitor:
         self._watch_dir: str = ""
         self._self_pid: int = os.getpid()
         self._running: bool = False
+        self._agent_roots: set[int] = set()
+        self._names: dict[int, str] = {}  # pid -> process name cache
+
+    def set_agent_roots(self, roots: set[int]) -> None:
+        """PIDs of the agent's own processes; commands under them are ``actor="agent"``."""
+        self._agent_roots = set(roots)
 
     def start(self, cwd: str, callback: Callable[[CommandInfo], None]) -> None:
         """Start monitoring processes in the given directory."""
@@ -97,6 +106,8 @@ class CommandMonitor:
                         continue
 
                     self._seen_pids.add(proc.pid)
+                    if proc.own_child:
+                        continue
 
                     # Parse command and args
                     parts = proc.args.strip().split()
@@ -112,6 +123,8 @@ class CommandMonitor:
                         args=args,
                         cwd=self._watch_dir,
                         pid=proc.pid,
+                        actor=proc.actor,
+                        parents=proc.parents,
                     )
 
                     callback(info)
@@ -147,10 +160,16 @@ class CommandMonitor:
         return self._list_processes_unix()
 
     def _list_processes_psutil(self) -> list[ProcessEntry]:
-        """List processes via psutil; command lines are fetched only for unseen PIDs."""
+        """List processes via psutil.
+
+        Cheap by design: ``psutil.pids()`` every poll; command lines, names and the
+        parent-ID table are fetched only when unseen PIDs appear, and only while
+        recording (not for the start-up snapshot).
+        """
         entries: list[ProcessEntry] = []
+        ppid_of: Callable[[int], int | None] | None = None
         for pid in psutil.pids():
-            if pid in self._seen_pids:
+            if pid in self._seen_pids or not self._running:
                 entries.append(ProcessEntry(pid=pid, command="", args=""))
                 continue
             try:
@@ -162,8 +181,44 @@ class CommandMonitor:
                     cmdline = []
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 continue
-            entries.append(ProcessEntry(pid=pid, command=name, args=" ".join(cmdline) or name))
+            self._names[pid] = name
+            entry = ProcessEntry(pid=pid, command=name, args=" ".join(cmdline) or name)
+            if ppid_of is None:
+                ppid_of = _ppid_lookup()
+            self._attribute(pid, entry, ppid_of)
+            entries.append(entry)
         return entries
+
+    def _name(self, pid: int) -> str | None:
+        if pid not in self._names:
+            try:
+                self._names[pid] = psutil.Process(pid).name()
+            except Exception:
+                return None
+        return self._names[pid]
+
+    def _attribute(self, pid: int, entry: ProcessEntry, ppid_of: Callable[[int], int | None]) -> None:
+        """Walk the parent chain: mark Unworldly's own children and agent-owned commands."""
+        ancestors: list[int] = []
+        current = pid
+        for _ in range(12):
+            parent = ppid_of(current)
+            if not parent or parent == current or parent in ancestors:
+                break
+            ancestors.append(parent)
+            current = parent
+        if self._self_pid in ancestors:
+            entry.own_child = True
+            return
+        names: list[str] = []
+        for parent_pid in ancestors[:6]:
+            name = self._name(parent_pid)
+            if name is None:
+                break
+            names.append(name)
+        entry.parents = names
+        if self._agent_roots:
+            entry.actor = "agent" if ({pid, *ancestors} & self._agent_roots) else "other"
 
     def _list_processes_unix(self) -> list[ProcessEntry]:
         """List processes on Unix using `ps`."""
@@ -235,6 +290,27 @@ class CommandMonitor:
             )
 
         return entries
+
+
+def _ppid_lookup() -> Callable[[int], int | None]:
+    """Parent-PID lookup for one poll.
+
+    Uses psutil's whole-system parent table when the platform has one (one cheap
+    snapshot on Windows/Linux); otherwise asks each process for its parent.
+    """
+    try:
+        platform_impl = getattr(psutil, "_psplatform")  # noqa: B009 - private, guarded by the except below
+        table: dict[int, int] = dict(platform_impl.ppid_map())
+        return table.get
+    except Exception:
+
+        def ask(pid: int) -> int | None:
+            try:
+                return int(psutil.Process(pid).ppid())
+            except Exception:
+                return None
+
+        return ask
 
 
 def create_command_monitor() -> CommandMonitor | None:

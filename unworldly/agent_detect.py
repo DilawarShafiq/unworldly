@@ -9,7 +9,6 @@ ISO 42001 A.3.2: Establish clear accountability -- identify the agent.
 from __future__ import annotations
 
 import os
-import subprocess
 import sys
 from dataclasses import dataclass, field
 
@@ -29,7 +28,7 @@ class AgentSignature:
 KNOWN_AGENTS: list[AgentSignature] = [
     AgentSignature(
         name="Claude Code",
-        env_vars=["CLAUDE_CODE", "ANTHROPIC_API_KEY"],
+        env_vars=["CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE"],
         process_names=["claude"],
         parent_process_names=["claude"],
     ),
@@ -118,8 +117,10 @@ def detect_agent() -> AgentInfo | None:
     for agent in KNOWN_AGENTS:
         for env_var in agent.env_vars:
             if os.environ.get(env_var):
+                pid_text = os.environ.get("CLAUDE_PID", "") if agent.name == "Claude Code" else ""
                 return AgentInfo(
                     name=agent.name,
+                    pid=int(pid_text) if pid_text.isdigit() else None,
                     detected_via=f"environment variable: {env_var}",
                 )
 
@@ -156,31 +157,9 @@ def detect_agent() -> AgentInfo | None:
 def _get_parent_process_name() -> str | None:
     """Get the parent process name."""
     try:
-        ppid = os.getppid()
-        if not ppid:
-            return None
+        import psutil
 
-        if sys.platform == "win32":
-            output = subprocess.check_output(
-                f"wmic process where ProcessId={ppid} get Name /format:csv",
-                encoding="utf-8",
-                timeout=2,
-                stderr=subprocess.DEVNULL,
-                shell=True,
-            )
-            lines = [line for line in output.strip().split("\n") if line.strip()]
-            if len(lines) >= 2:
-                parts = lines[1].strip().split(",")
-                return parts[-1].strip() or None
-            return None
-        else:
-            output = subprocess.check_output(
-                ["ps", "-p", str(ppid), "-o", "comm="],
-                encoding="utf-8",
-                timeout=2,
-                stderr=subprocess.DEVNULL,
-            )
-            return output.strip() or None
+        return psutil.Process(os.getppid()).name() or None
     except Exception:
         return None
 
@@ -188,29 +167,75 @@ def _get_parent_process_name() -> str | None:
 def _get_running_processes() -> list[str]:
     """Get a list of running process names."""
     try:
-        if sys.platform == "win32":
-            output = subprocess.check_output(
-                "tasklist /fo csv /nh",
-                encoding="utf-8",
-                timeout=3,
-                stderr=subprocess.DEVNULL,
-                shell=True,
-            )
-            result = []
-            for line in output.split("\n"):
-                parts = line.split(",")
-                if parts:
-                    name = parts[0].replace('"', "").strip()
-                    if name:
-                        result.append(name)
-            return result
-        else:
-            output = subprocess.check_output(
-                ["ps", "-eo", "comm", "--no-headers"],
-                encoding="utf-8",
-                timeout=2,
-                stderr=subprocess.DEVNULL,
-            )
-            return [line.strip() for line in output.split("\n") if line.strip()]
+        import psutil
+
+        names: list[str] = []
+        for proc in psutil.process_iter(["name"]):
+            name = proc.info.get("name")
+            if name:
+                names.append(name)
+        return names
     except Exception:
         return []
+
+
+def _stem(name: str) -> str:
+    base = os.path.basename(name.replace("\\", "/")).lower()
+    return base[:-4] if base.endswith(".exe") else base
+
+
+def find_agent_roots(agent: AgentInfo | None) -> set[int]:
+    """PIDs of the detected agent's own processes, used to attribute commands.
+
+    Uses the agent's PID when known (e.g. Claude Code's ``CLAUDE_PID``) plus any
+    running process whose executable name exactly matches the agent's known
+    process names. Returns an empty set when no agent is known, so commands are
+    never attributed by guesswork.
+    """
+    if agent is None:
+        return set()
+    roots: set[int] = set()
+    if agent.pid:
+        roots.add(agent.pid)
+    signature = next((a for a in KNOWN_AGENTS if a.name == agent.name), None)
+    if signature is None:
+        return roots
+    wanted = {_stem(n) for n in signature.process_names}
+    try:
+        import psutil
+
+        for proc in psutil.process_iter(["pid", "name"]):
+            if proc.info.get("name") and _stem(proc.info["name"]) in wanted:
+                roots.add(int(proc.info["pid"]))
+    except Exception:
+        pass
+    roots.discard(os.getpid())
+    return roots
+
+
+_MODEL_ENV_VARS = ("ANTHROPIC_MODEL", "CLAUDE_MODEL", "OPENAI_MODEL", "AIDER_MODEL")
+
+
+def detect_model(roots: set[int] | None = None) -> str | None:
+    """Best-effort model name: env vars, else a ``--model`` flag on the agent's command line.
+
+    Never guessed: returns None when neither is present.
+    """
+    for var in _MODEL_ENV_VARS:
+        value = os.environ.get(var)
+        if value:
+            return value
+    if roots:
+        try:
+            import psutil
+
+            for pid in roots:
+                args = psutil.Process(pid).cmdline()
+                for i, arg in enumerate(args):
+                    if arg == "--model" and i + 1 < len(args):
+                        return args[i + 1]
+                    if arg.startswith("--model="):
+                        return arg.split("=", 1)[1]
+        except Exception:
+            pass
+    return None

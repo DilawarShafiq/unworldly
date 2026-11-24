@@ -33,6 +33,8 @@ class CommandInfo:
     cwd: str
     pid: int
     exit_code: int | None = None
+    actor: str | None = None  # "agent" | "other"; None when it can't be attributed
+    parents: list[str] | None = None  # parent process names, nearest first
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
@@ -43,6 +45,10 @@ class CommandInfo:
         }
         if self.exit_code is not None:
             result["exitCode"] = self.exit_code
+        if self.actor is not None:
+            result["actor"] = self.actor
+        if self.parents is not None:
+            result["parents"] = self.parents
         return result
 
     @classmethod
@@ -53,6 +59,8 @@ class CommandInfo:
             cwd=data["cwd"],
             pid=data["pid"],
             exit_code=data.get("exitCode"),
+            actor=data.get("actor"),
+            parents=data.get("parents"),
         )
 
 
@@ -67,6 +75,10 @@ class WatchEvent:
     reason: str | None = None
     command: CommandInfo | None = None
     hash: str | None = None
+    # File content (file events only; see content.py). Part of the event hash.
+    before_hash: str | None = None
+    after_hash: str | None = None
+    diff: str | None = None
     # Forward-secure signature fields (signed sessions only; see signing.py)
     seq: int | None = None
     signature: str | None = None
@@ -83,6 +95,12 @@ class WatchEvent:
             result["reason"] = self.reason
         if self.command is not None:
             result["command"] = self.command.to_dict()
+        if self.before_hash is not None:
+            result["beforeHash"] = self.before_hash
+        if self.after_hash is not None:
+            result["afterHash"] = self.after_hash
+        if self.diff is not None:
+            result["diff"] = self.diff
         if self.hash is not None:
             result["hash"] = self.hash
         if self.seq is not None:
@@ -104,6 +122,9 @@ class WatchEvent:
             reason=data.get("reason"),
             command=command,
             hash=data.get("hash"),
+            before_hash=data.get("beforeHash"),
+            after_hash=data.get("afterHash"),
+            diff=data.get("diff"),
             seq=data.get("seq"),
             signature=data.get("signature"),
             next_public_key=data.get("nextPublicKey"),
@@ -155,6 +176,7 @@ class AgentInfo:
     pid: int | None = None
     version: str | None = None
     detected_via: str = ""
+    model: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
@@ -165,6 +187,8 @@ class AgentInfo:
             result["pid"] = self.pid
         if self.version is not None:
             result["version"] = self.version
+        if self.model is not None:
+            result["model"] = self.model
         return result
 
     @classmethod
@@ -174,6 +198,7 @@ class AgentInfo:
             pid=data.get("pid"),
             version=data.get("version"),
             detected_via=data.get("detectedVia", ""),
+            model=data.get("model"),
         )
 
 

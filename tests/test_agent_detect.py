@@ -17,6 +17,9 @@ class TestAgentDetect:
         # Clear all known agent env vars
         agent_vars = [
             "CLAUDE_CODE",
+            "CLAUDECODE",
+            "CLAUDE_CODE_ENTRYPOINT",
+            "CLAUDE_PID",
             "ANTHROPIC_API_KEY",
             "CURSOR_SESSION",
             "CURSOR_TRACE_ID",
@@ -42,6 +45,9 @@ class TestAgentDetect:
             self._original_env = os.environ.copy()
             agent_vars = [
                 "CLAUDE_CODE",
+                "CLAUDECODE",
+                "CLAUDE_CODE_ENTRYPOINT",
+                "CLAUDE_PID",
                 "ANTHROPIC_API_KEY",
                 "CURSOR_SESSION",
                 "CURSOR_TRACE_ID",
@@ -116,6 +122,9 @@ class TestAgentDetect:
             self._original_env = os.environ.copy()
             agent_vars = [
                 "CLAUDE_CODE",
+                "CLAUDECODE",
+                "CLAUDE_CODE_ENTRYPOINT",
+                "CLAUDE_PID",
                 "ANTHROPIC_API_KEY",
                 "CURSOR_SESSION",
                 "CURSOR_TRACE_ID",
@@ -147,6 +156,9 @@ class TestAgentDetect:
             self._original_env = os.environ.copy()
             agent_vars = [
                 "CLAUDE_CODE",
+                "CLAUDECODE",
+                "CLAUDE_CODE_ENTRYPOINT",
+                "CLAUDE_PID",
                 "ANTHROPIC_API_KEY",
                 "CURSOR_SESSION",
                 "CURSOR_TRACE_ID",

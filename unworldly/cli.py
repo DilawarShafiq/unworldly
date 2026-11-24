@@ -10,7 +10,7 @@ import click
 from ._version import __version__
 from .display import banner, verify_display
 from .integrity import verify_session
-from .replay import list_command, replay, touched_command
+from .replay import list_command, replay, show_event, touched_command
 from .report import report
 from .session import get_latest_session, load_session
 from .watcher import watch
@@ -40,9 +40,34 @@ def cli() -> None:
     default="poll",
     help="Command capture: poll (default, best-effort), hook (lossless, needs `hook install`), both.",
 )
-def watch_cmd(directory: str, hipaa: bool, tag: str | None, on_danger: str | None, capture: str) -> None:
+@click.option(
+    "--outside/--no-outside",
+    default=True,
+    help="Also watch sensitive places outside the project: ~/.ssh, ~/.aws, shell startup files (default: on).",
+)
+@click.option("--model", default=None, help="Model name to record for this session (overrides detection).")
+@click.option("--agent-version", "agent_version", default=None, help="Agent version to record for this session.")
+def watch_cmd(
+    directory: str,
+    hipaa: bool,
+    tag: str | None,
+    on_danger: str | None,
+    capture: str,
+    outside: bool,
+    model: str | None,
+    agent_version: str | None,
+) -> None:
     """Start recording AI agent activity in the current directory."""
-    watch(directory, hipaa=hipaa, tag=tag, on_danger=on_danger, capture=capture)
+    watch(
+        directory,
+        hipaa=hipaa,
+        tag=tag,
+        on_danger=on_danger,
+        capture=capture,
+        outside=outside,
+        model=model,
+        agent_version=agent_version,
+    )
 
 
 watch_cmd.name = "watch"
@@ -216,6 +241,26 @@ def touched(session: str | None) -> None:
         click.echo("No sessions found. Run `unworldly watch` first.", err=True)
         sys.exit(1)
     touched_command(session_path)
+
+
+# ── show ──────────────────────────────────────────────────────────────────────
+
+
+@cli.command()
+@click.argument("number", type=int)
+@click.argument("session", required=False)
+def show(number: int, session: str | None) -> None:
+    """Show one event in full: who ran it, file hashes and the (redacted) diff.
+
+    NUMBER is the event number shown in reports (1 = first event).
+    """
+    session_path = session or get_latest_session(os.getcwd())
+    if not session_path:
+        click.echo("No sessions found. Run `unworldly watch` first.", err=True)
+        sys.exit(1)
+    if not show_event(session_path, number):
+        click.echo(f"No event #{number} in this session.", err=True)
+        sys.exit(1)
 
 
 # ── diff ──────────────────────────────────────────────────────────────────────

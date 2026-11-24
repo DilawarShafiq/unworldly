@@ -21,18 +21,20 @@ def hash_event(event: WatchEvent, previous_hash: str) -> str:
     This creates a tamper-evident chain -- modifying any event invalidates
     all subsequent hashes and the session integrity hash.
     """
-    payload = json.dumps(
-        {
-            "timestamp": event.timestamp,
-            "type": event.type.value if hasattr(event.type, "value") else event.type,
-            "path": event.path,
-            "risk": event.risk.value if hasattr(event.risk, "value") else event.risk,
-            "reason": event.reason,
-            "command": event.command.to_dict() if event.command else None,
-            "previousHash": previous_hash,
-        },
-        separators=(",", ":"),
-    )
+    fields: dict[str, object] = {
+        "timestamp": event.timestamp,
+        "type": event.type.value if hasattr(event.type, "value") else event.type,
+        "path": event.path,
+        "risk": event.risk.value if hasattr(event.risk, "value") else event.risk,
+        "reason": event.reason,
+        "command": event.command.to_dict() if event.command else None,
+        "previousHash": previous_hash,
+    }
+    # Fields added in 0.8 are hashed only when present, so older sessions still verify.
+    for key, value in (("beforeHash", event.before_hash), ("afterHash", event.after_hash), ("diff", event.diff)):
+        if value is not None:
+            fields[key] = value
+    payload = json.dumps(fields, separators=(",", ":"))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
