@@ -74,7 +74,7 @@ def diff_command(session_a_path: str, session_b_path: str) -> None:
 
     only_a = [p for p in all_paths if p in files_a and p not in files_b]
     only_b = [p for p in all_paths if p not in files_a and p in files_b]
-    both   = [p for p in all_paths if p in files_a and p in files_b]
+    both = [p for p in all_paths if p in files_a and p in files_b]
 
     _risk_order = {RiskLevel.DANGER: 2, RiskLevel.CAUTION: 1, RiskLevel.SAFE: 0}
 
@@ -103,8 +103,11 @@ def diff_command(session_a_path: str, session_b_path: str) -> None:
             print(f"    {_risk_icon(r)} {p}  {gray}×{len(files_b[p])}{reset}")
 
     if both:
-        changed = [(p, _max_risk(files_a[p]), _max_risk(files_b[p])) for p in both
-                   if _risk_order[_max_risk(files_a[p])] != _risk_order[_max_risk(files_b[p])]]
+        changed = [
+            (p, _max_risk(files_a[p]), _max_risk(files_b[p]))
+            for p in both
+            if _risk_order[_max_risk(files_a[p])] != _risk_order[_max_risk(files_b[p])]
+        ]
         if changed:
             print(f"\n  {white_bold}Risk Changed:{reset}")
             for p, ra, rb in changed:

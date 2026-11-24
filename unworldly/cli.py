@@ -28,6 +28,7 @@ def cli() -> None:
 
 # ── watch ─────────────────────────────────────────────────────────────────────
 
+
 @cli.command()
 @click.argument("directory", default=".")
 @click.option("--hipaa", is_flag=True, default=False, help="Enable HIPAA PHI detection patterns.")
@@ -48,6 +49,7 @@ watch_cmd.name = "watch"
 
 
 # ── hook ──────────────────────────────────────────────────────────────────────
+
 
 @cli.group()
 def hook() -> None:
@@ -107,6 +109,7 @@ def hook_print(shell: str | None) -> None:
 
 # ── replay ────────────────────────────────────────────────────────────────────
 
+
 @cli.command()
 @click.argument("session", required=False)
 @click.option("-s", "--speed", default=1.0, type=float, help="Playback speed multiplier.")
@@ -123,6 +126,7 @@ replay_cmd.name = "replay"
 
 
 # ── report ────────────────────────────────────────────────────────────────────
+
 
 @cli.command()
 @click.argument("session", required=False)
@@ -143,6 +147,7 @@ report_cmd.name = "report"
 
 # ── verify ────────────────────────────────────────────────────────────────────
 
+
 @cli.command()
 @click.argument("session", required=False)
 def verify(session: str | None) -> None:
@@ -159,6 +164,7 @@ def verify(session: str | None) -> None:
 
 
 # ── list / ls ─────────────────────────────────────────────────────────────────
+
 
 @cli.command(name="list")
 @click.option(
@@ -184,6 +190,7 @@ def ls_cmd(risk: str | None, agent: str | None, since: str | None, tag: str | No
 
 # ── touched ───────────────────────────────────────────────────────────────────
 
+
 @cli.command()
 @click.argument("session", required=False)
 def touched(session: str | None) -> None:
@@ -197,16 +204,19 @@ def touched(session: str | None) -> None:
 
 # ── diff ──────────────────────────────────────────────────────────────────────
 
+
 @cli.command()
 @click.argument("session_a")
 @click.argument("session_b")
 def diff(session_a: str, session_b: str) -> None:
     """Compare two recorded sessions side by side."""
     from .diff import diff_command
+
     diff_command(session_a, session_b)
 
 
 # ── export ────────────────────────────────────────────────────────────────────
+
 
 @cli.command()
 @click.argument("session", required=False)
@@ -219,10 +229,12 @@ def export(session: str | None, fmt: str, output: str | None) -> None:
         click.echo("No sessions found. Run `unworldly watch` first.", err=True)
         sys.exit(1)
     from .sarif import export_sarif
+
     export_sarif(session_path, output=output)
 
 
 # ── snapshot ──────────────────────────────────────────────────────────────────
+
 
 @cli.command()
 @click.argument("mode", type=click.Choice(["before", "after"]))
@@ -234,6 +246,7 @@ def snapshot(mode: str, directory: str) -> None:
     then `unworldly snapshot after` when it finishes.
     """
     from .snapshot import snapshot_after, snapshot_before
+
     if mode == "before":
         snapshot_before(directory)
     else:
@@ -241,6 +254,7 @@ def snapshot(mode: str, directory: str) -> None:
 
 
 # ── review ────────────────────────────────────────────────────────────────────
+
 
 @cli.command()
 @click.argument("session", required=False)
@@ -255,10 +269,12 @@ def review(session: str | None, output: str | None, show_all: bool) -> None:
         click.echo("No sessions found. Run `unworldly watch` first.", err=True)
         sys.exit(1)
     from .review import review_command
+
     review_command(session_path, output=output, show_all=show_all)
 
 
 # ── collect (OTel GenAI ingestion) ──────────────────────────────────────────────
+
 
 @cli.command()
 @click.argument("spans_file")
@@ -279,6 +295,7 @@ def collect(spans_file: str, agent_name: str | None) -> None:
 
 # ── mcp-proxy ───────────────────────────────────────────────────────────────────
 
+
 @cli.command(name="mcp-proxy", context_settings={"ignore_unknown_options": True})
 @click.option("--agent", "agent_name", default=None, help="Label the session with this agent name.")
 @click.argument("target", nargs=-1, required=True)
@@ -295,6 +312,7 @@ def mcp_proxy(agent_name: str | None, target: tuple[str, ...]) -> None:
 
 # ── doctor ────────────────────────────────────────────────────────────────────
 
+
 @cli.command()
 def doctor() -> None:
     """Diagnose which capture layers work on this machine — and what they can't see."""
@@ -304,6 +322,7 @@ def doctor() -> None:
 
 
 # ── entry point ───────────────────────────────────────────────────────────────
+
 
 def main() -> None:
     """Main entry point."""

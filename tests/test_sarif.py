@@ -17,16 +17,24 @@ def _make_session(events: list[WatchEvent]) -> Session:
     danger = sum(1 for e in events if e.risk == RiskLevel.DANGER)
     caution = sum(1 for e in events if e.risk == RiskLevel.CAUTION)
     return Session(
-        version="0.5.0", id="sarif001", start_time=now, end_time=now,
-        directory="/tmp", events=events,
-        summary=SessionSummary(total_events=len(events), danger=danger, caution=caution,
-                               safe=len(events) - danger - caution, risk_score=float(danger * 2)),
+        version="0.5.0",
+        id="sarif001",
+        start_time=now,
+        end_time=now,
+        directory="/tmp",
+        events=events,
+        summary=SessionSummary(
+            total_events=len(events),
+            danger=danger,
+            caution=caution,
+            safe=len(events) - danger - caution,
+            risk_score=float(danger * 2),
+        ),
     )
 
 
 def _evt(path: str, risk: RiskLevel, etype: EventType = EventType.MODIFY, reason: str = "test") -> WatchEvent:
-    return WatchEvent(timestamp=datetime.now(timezone.utc).isoformat(),
-                      type=etype, path=path, risk=risk, reason=reason)
+    return WatchEvent(timestamp=datetime.now(timezone.utc).isoformat(), type=etype, path=path, risk=risk, reason=reason)
 
 
 def test_sarif_version() -> None:
@@ -82,6 +90,7 @@ def test_export_sarif_creates_file(tmp_path: pytest.TempPathFactory) -> None:
     session = _make_session([_evt(".env", RiskLevel.DANGER, reason="credential file")])
     session_path = str(tmp_path) + "/test.json"
     import json as _json
+
     with open(session_path, "w") as f:
         _json.dump(session.to_dict(), f)
 
@@ -96,4 +105,5 @@ def test_export_sarif_creates_file(tmp_path: pytest.TempPathFactory) -> None:
 
 def test_sarif_has_five_rules() -> None:
     from unworldly.sarif import _RULES
+
     assert len(_RULES) == 5

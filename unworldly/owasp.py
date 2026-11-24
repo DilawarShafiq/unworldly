@@ -14,13 +14,14 @@ if TYPE_CHECKING:
 
 # ── OWASP rule definitions ────────────────────────────────────────────────────
 
+
 @dataclass
 class OWASPRule:
-    id: str          # e.g. "AA01"
+    id: str  # e.g. "AA01"
     name: str
     description: str
-    triggers: list[str]   # substrings matched against event.reason (case-insensitive)
-    severity: str    # "critical" | "high" | "medium"
+    triggers: list[str]  # substrings matched against event.reason (case-insensitive)
+    severity: str  # "critical" | "high" | "medium"
 
 
 OWASP_RULES: list[OWASPRule] = [
@@ -57,9 +58,23 @@ OWASP_RULES: list[OWASPRule] = [
         name="Data Exfiltration",
         description="Agent unauthorizedly extracts or exposes sensitive data.",
         triggers=[
-            "credential", "private key", ".env", ".pem", ".key", "secret", "token",
-            "curl", "wget", "scp", "rsync", "outbound", "upload", "aws credentials",
-            "azure credentials", "gcp credentials", "ssh key",
+            "credential",
+            "private key",
+            ".env",
+            ".pem",
+            ".key",
+            "secret",
+            "token",
+            "curl",
+            "wget",
+            "scp",
+            "rsync",
+            "outbound",
+            "upload",
+            "aws credentials",
+            "azure credentials",
+            "gcp credentials",
+            "ssh key",
         ],
         severity="critical",
     ),
@@ -96,8 +111,15 @@ OWASP_RULES: list[OWASPRule] = [
         name="Supply Chain Compromise",
         description="Agent installs or uses compromised third-party packages or tools.",
         triggers=[
-            "npm install", "pip install", "cargo install", "apt install",
-            "brew install", "yarn add", "gem install", "dependency", "package install",
+            "npm install",
+            "pip install",
+            "cargo install",
+            "apt install",
+            "brew install",
+            "yarn add",
+            "gem install",
+            "dependency",
+            "package install",
         ],
         severity="medium",
     ),
@@ -105,6 +127,7 @@ OWASP_RULES: list[OWASPRule] = [
 
 
 # ── Mapping logic ─────────────────────────────────────────────────────────────
+
 
 @dataclass
 class OWASPFinding:
@@ -170,10 +193,7 @@ def owasp_terminal_report(findings: list[OWASPFinding]) -> str:
         lines.append("")
 
     coverage = len(triggered)
-    lines.append(
-        f"  {white_bold}Coverage:{reset} {coverage}/10 risks detected"
-        f"  {gray}(lower is better){reset}\n"
-    )
+    lines.append(f"  {white_bold}Coverage:{reset} {coverage}/10 risks detected  {gray}(lower is better){reset}\n")
     return "\n".join(lines)
 
 
@@ -198,6 +218,7 @@ def owasp_markdown_section(findings: list[OWASPFinding]) -> str:
             lines.append("|------|-------|------|")
             for e in f.events[:10]:
                 from datetime import datetime
+
                 t = datetime.fromisoformat(e.timestamp.replace("Z", "+00:00")).strftime("%H:%M:%S")
                 lines.append(f"| {t} | {e.type.value.upper()} | `{e.path}` |")
             if len(f.events) > 10:

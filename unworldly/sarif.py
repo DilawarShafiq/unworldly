@@ -183,7 +183,6 @@ def export_sarif(session_path: str, output: str | None = None) -> None:
     findings = len(sarif["runs"][0]["results"])
     print(f"\n  {green}✓ SARIF exported:{reset} {out_path}")
     print(
-        f"  {white_bold}{findings}{reset} findings "
-        f"({session.summary.danger} error, {session.summary.caution} warning)"
+        f"  {white_bold}{findings}{reset} findings ({session.summary.danger} error, {session.summary.caution} warning)"
     )
     print(f"  {gray}Upload to GitHub: gh code-scanning upload-results --sarif {out_path}{reset}\n")

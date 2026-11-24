@@ -19,15 +19,18 @@ from .types import RiskLevel
 
 # ── Cross-platform single-char read ──────────────────────────────────────────
 
+
 def _getch() -> str:
     """Read one keypress without waiting for Enter."""
     if sys.platform == "win32":
         import msvcrt
+
         ch = msvcrt.getch()
         return ch.decode("utf-8", errors="replace")
     else:
         import termios
         import tty
+
         fd = sys.stdin.fileno()
         old = termios.tcgetattr(fd)
         try:
@@ -38,6 +41,7 @@ def _getch() -> str:
 
 
 # ── Review logic ─────────────────────────────────────────────────────────────
+
 
 def _format_time(iso_string: str) -> str:
     dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
@@ -72,10 +76,7 @@ def review_command(
 
     print(banner())
     agent_name = session.agent.name if session.agent else "Unknown Agent"
-    print(
-        f"  {white_bold}Interactive Review{reset}  {cyan}{agent_name}{reset}"
-        f"  {gray}Session {session.id}{reset}\n"
-    )
+    print(f"  {white_bold}Interactive Review{reset}  {cyan}{agent_name}{reset}  {gray}Session {session.id}{reset}\n")
     print(
         f"  {gray}Reviewing {len(to_review)} event(s)."
         f"  Keys: {reset}"
@@ -120,19 +121,22 @@ def review_command(
                 # Switch back to line mode for note input
                 if sys.platform != "win32":
                     import termios
+
                     fd = sys.stdin.fileno()
                     old = termios.tcgetattr(fd)
                     termios.tcsetattr(fd, termios.TCSADRAIN, old)
                 note = input()
-                decisions.append({
-                    "event_index": session.events.index(event),
-                    "timestamp": event.timestamp,
-                    "path": event.path,
-                    "risk": event.risk.value,
-                    "type": event.type.value,
-                    "decision": "noted",
-                    "note": note,
-                })
+                decisions.append(
+                    {
+                        "event_index": session.events.index(event),
+                        "timestamp": event.timestamp,
+                        "path": event.path,
+                        "risk": event.risk.value,
+                        "type": event.type.value,
+                        "decision": "noted",
+                        "note": note,
+                    }
+                )
                 reviewed += 1
                 print(f"  {yellow}→ Noted{reset}\n")
                 print(f"  {gray}{'─' * 66}{reset}\n")
@@ -150,22 +154,24 @@ def review_command(
             break
 
         print(f"{color}{label}{reset}\n")
-        decisions.append({
-            "event_index": session.events.index(event),
-            "timestamp": event.timestamp,
-            "path": event.path,
-            "risk": event.risk.value,
-            "type": event.type.value,
-            "decision": decision,
-        })
+        decisions.append(
+            {
+                "event_index": session.events.index(event),
+                "timestamp": event.timestamp,
+                "path": event.path,
+                "risk": event.risk.value,
+                "type": event.type.value,
+                "decision": decision,
+            }
+        )
         reviewed += 1
         print(f"  {gray}{'─' * 66}{reset}\n")
 
     # ── Summary ───────────────────────────────────────────────────────────────
     approved = sum(1 for d in decisions if d["decision"] == "approved")
-    flagged  = sum(1 for d in decisions if d["decision"] == "flagged")
-    skipped  = sum(1 for d in decisions if d["decision"] == "skipped")
-    noted    = sum(1 for d in decisions if d["decision"] == "noted")
+    flagged = sum(1 for d in decisions if d["decision"] == "flagged")
+    skipped = sum(1 for d in decisions if d["decision"] == "skipped")
+    noted = sum(1 for d in decisions if d["decision"] == "noted")
 
     print(
         f"  {white_bold}Review complete{reset}  "

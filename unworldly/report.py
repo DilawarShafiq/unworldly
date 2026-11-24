@@ -225,6 +225,7 @@ def report(
         markdown = _generate_markdown(session)
         if include_owasp:
             from .owasp import map_session, owasp_markdown_section
+
             findings = map_session(session)
             markdown += "\n" + owasp_markdown_section(findings)
         output_path = output or f"unworldly-report-{session.id}.md"
@@ -259,8 +260,10 @@ def report(
     print(f"  {gray}Coverage:  {capture_note}{reset}")
     if session.usage:
         total = session.usage.get("totalTokens", 0)
-        print(f"  Tokens:    {white}{total:,}{reset} {gray}(in {session.usage.get('inputTokens', 0):,}"
-              f" / out {session.usage.get('outputTokens', 0):,}){reset}")
+        print(
+            f"  Tokens:    {white}{total:,}{reset} {gray}(in {session.usage.get('inputTokens', 0):,}"
+            f" / out {session.usage.get('outputTokens', 0):,}){reset}"
+        )
     print("")
 
     # Integrity verification
@@ -304,6 +307,7 @@ def report(
 
     if include_owasp:
         from .owasp import map_session, owasp_terminal_report
+
         findings = map_session(session)
         print(owasp_terminal_report(findings))
 

@@ -116,7 +116,7 @@ def run_doctor(directory: str = ".") -> DoctorReport:
 
     # HIPAA
     if _has_module("unworldly.hipaa_risk"):
-        report.add("HIPAA PHI detection", INFO, "Available — enable with `--hipaa` or config `\"hipaa\": true`.")
+        report.add("HIPAA PHI detection", INFO, 'Available — enable with `--hipaa` or config `"hipaa": true`.')
 
     # Honest bottom line
     report.add(

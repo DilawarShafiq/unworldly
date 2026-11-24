@@ -99,6 +99,7 @@ class _UnworldlyHandler(FileSystemEventHandler):
 
         if self.on_danger and risk_result.level.value == "danger":
             from .alerts import fire_alert
+
             fire_alert(self.on_danger, watch_event, self.session)
 
         # Save incrementally so no data is lost on abrupt exit
@@ -197,6 +198,7 @@ def watch(
         )
         if on_danger and risk_result.level.value == "danger":
             from .alerts import fire_alert
+
             fire_alert(on_danger, watch_event, session)
         save_session(session, abs_dir)
 

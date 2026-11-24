@@ -45,6 +45,7 @@ def _sparkline(session: Session, buckets: int = 12) -> str:
 
 # ── Since parser ─────────────────────────────────────────────────────────────
 
+
 def _parse_since(since: str) -> datetime | None:
     m = re.match(r"^(\d+)([mhd])$", since.strip().lower())
     if not m:
@@ -55,6 +56,7 @@ def _parse_since(since: str) -> datetime | None:
 
 
 # ── Replay ───────────────────────────────────────────────────────────────────
+
 
 def _format_time(iso_string: str) -> str:
     dt = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
@@ -96,6 +98,7 @@ def replay(session_path: str, speed: float = 1.0) -> None:
 
 # ── List ─────────────────────────────────────────────────────────────────────
 
+
 def list_command(
     base_dir: str,
     risk: str | None = None,
@@ -135,11 +138,7 @@ def list_command(
 
         # --- filters ---
         if risk:
-            max_risk = (
-                "danger" if session.summary.danger > 0
-                else "caution" if session.summary.caution > 0
-                else "safe"
-            )
+            max_risk = "danger" if session.summary.danger > 0 else "caution" if session.summary.caution > 0 else "safe"
             if max_risk != risk:
                 continue
         if agent and session.agent and agent.lower() not in session.agent.name.lower():
@@ -200,6 +199,7 @@ def list_command(
 
 
 # ── Touched ──────────────────────────────────────────────────────────────────
+
 
 def touched_command(session_path: str) -> None:
     """Show a per-file summary of what an agent touched in a session."""

@@ -29,8 +29,12 @@ class TestInterceptor:
         rec = self._recorder(tmp_path)
         icept = MCPProxyInterceptor(rec)
         recorded = icept.observe(
-            {"jsonrpc": "2.0", "id": 1, "method": "tools/call",
-             "params": {"name": "fs.delete", "arguments": {"path": "/x"}}}
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {"name": "fs.delete", "arguments": {"path": "/x"}},
+            }
         )
         assert recorded is True
         loaded = load_session(rec.close())

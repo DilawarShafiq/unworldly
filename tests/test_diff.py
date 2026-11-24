@@ -19,8 +19,9 @@ def _make_session(sid: str, events: list[WatchEvent]) -> Session:
         danger=sum(1 for e in events if e.risk == RiskLevel.DANGER),
         risk_score=float(sum(1 for e in events if e.risk == RiskLevel.DANGER) * 2),
     )
-    return Session(version="0.5.0", id=sid, start_time=now, end_time=now,
-                   directory="/tmp", events=events, summary=summary)
+    return Session(
+        version="0.5.0", id=sid, start_time=now, end_time=now, directory="/tmp", events=events, summary=summary
+    )
 
 
 def _evt(path: str, risk: RiskLevel, etype: EventType = EventType.MODIFY) -> WatchEvent:

@@ -35,10 +35,31 @@ _ARG_PREVIEW_LIMIT = 200
 
 # Substrings that, in a tool name or its serialized arguments, imply intent.
 _DANGER_HINTS = (
-    "delete", "remove", "rmtree", "drop", "truncate", "destroy", "wipe",
-    "exec", "shell", "spawn", "system", "eval", "sudo", "chmod",
-    "secret", "credential", "token", "password", "private_key", "apikey", "api_key",
-    "transfer", "wire", "payout", "refund",
+    "delete",
+    "remove",
+    "rmtree",
+    "drop",
+    "truncate",
+    "destroy",
+    "wipe",
+    "exec",
+    "shell",
+    "spawn",
+    "system",
+    "eval",
+    "sudo",
+    "chmod",
+    "secret",
+    "credential",
+    "token",
+    "password",
+    "private_key",
+    "apikey",
+    "api_key",
+    "transfer",
+    "wire",
+    "payout",
+    "refund",
 )
 _NETWORK_HINTS = ("http", "https", "fetch", "request", "curl", "webhook", "upload", "post", "send", "email")
 _WRITE_HINTS = ("write", "create", "update", "insert", "put", "patch", "install", "deploy", "commit", "modify")
@@ -74,10 +95,7 @@ def redact_params(obj: Any) -> Any:
     redaction never hides a danger signal.
     """
     if isinstance(obj, dict):
-        return {
-            k: (REDACTED if _SENSITIVE_KEY.search(str(k)) else redact_params(v))
-            for k, v in obj.items()
-        }
+        return {k: (REDACTED if _SENSITIVE_KEY.search(str(k)) else redact_params(v)) for k, v in obj.items()}
     if isinstance(obj, (list, tuple)):
         return [redact_params(x) for x in obj]
     if isinstance(obj, str):

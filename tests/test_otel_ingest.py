@@ -104,10 +104,24 @@ class TestUsageTracking:
 
     def test_session_aggregates_token_usage(self, tmp_path):
         spans = [
-            {"name": "chat", "attributes": {"gen_ai.operation.name": "chat",
-             "gen_ai.request.model": "m", "gen_ai.usage.input_tokens": 100, "gen_ai.usage.output_tokens": 40}},
-            {"name": "chat", "attributes": {"gen_ai.operation.name": "chat",
-             "gen_ai.request.model": "m", "gen_ai.usage.input_tokens": 10, "gen_ai.usage.output_tokens": 5}},
+            {
+                "name": "chat",
+                "attributes": {
+                    "gen_ai.operation.name": "chat",
+                    "gen_ai.request.model": "m",
+                    "gen_ai.usage.input_tokens": 100,
+                    "gen_ai.usage.output_tokens": 40,
+                },
+            },
+            {
+                "name": "chat",
+                "attributes": {
+                    "gen_ai.operation.name": "chat",
+                    "gen_ai.request.model": "m",
+                    "gen_ai.usage.input_tokens": 10,
+                    "gen_ai.usage.output_tokens": 5,
+                },
+            },
         ]
         session = spans_to_session(spans, directory=str(tmp_path))
         assert session.usage == {"inputTokens": 110, "outputTokens": 45, "totalTokens": 155}

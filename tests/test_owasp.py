@@ -11,15 +11,18 @@ from unworldly.types import EventType, RiskLevel, Session, SessionSummary, Watch
 def _make_session(events: list[WatchEvent]) -> Session:
     now = datetime.now(timezone.utc).isoformat()
     return Session(
-        version="0.5.0", id="test0001", start_time=now, end_time=now,
-        directory="/tmp", events=events,
+        version="0.5.0",
+        id="test0001",
+        start_time=now,
+        end_time=now,
+        directory="/tmp",
+        events=events,
         summary=SessionSummary(total_events=len(events), danger=len(events)),
     )
 
 
 def _evt(path: str, reason: str, risk: RiskLevel = RiskLevel.DANGER, etype: EventType = EventType.MODIFY) -> WatchEvent:
-    return WatchEvent(timestamp=datetime.now(timezone.utc).isoformat(),
-                      type=etype, path=path, risk=risk, reason=reason)
+    return WatchEvent(timestamp=datetime.now(timezone.utc).isoformat(), type=etype, path=path, risk=risk, reason=reason)
 
 
 def test_credential_triggers_aa05() -> None:

@@ -15,17 +15,28 @@ from unworldly.types import EventType, RiskLevel, Session, SessionSummary, Watch
 def _make_event(path: str = ".env", reason: str = "credential file") -> WatchEvent:
     return WatchEvent(
         timestamp=datetime.now(timezone.utc).isoformat(),
-        type=EventType.MODIFY, path=path, risk=RiskLevel.DANGER, reason=reason,
+        type=EventType.MODIFY,
+        path=path,
+        risk=RiskLevel.DANGER,
+        reason=reason,
     )
 
 
 def _make_session() -> Session:
     now = datetime.now(timezone.utc).isoformat()
-    return Session(version="0.5.0", id="alert001", start_time=now, end_time=now,
-                   directory="/tmp", events=[], summary=SessionSummary(danger=1, risk_score=8.0))
+    return Session(
+        version="0.5.0",
+        id="alert001",
+        start_time=now,
+        end_time=now,
+        directory="/tmp",
+        events=[],
+        summary=SessionSummary(danger=1, risk_score=8.0),
+    )
 
 
 # ── Webhook ───────────────────────────────────────────────────────────────────
+
 
 class _CaptureHandler(BaseHTTPRequestHandler):
     received: list[dict] = []  # type: ignore[assignment]
@@ -70,6 +81,7 @@ def test_webhook_ignores_unreachable_url() -> None:
 
 
 # ── fire_alert dispatch ───────────────────────────────────────────────────────
+
 
 def test_fire_alert_dispatches_webhook() -> None:
     event = _make_event()
