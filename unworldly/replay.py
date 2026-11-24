@@ -85,6 +85,13 @@ def replay(session_path: str, speed: float = 1.0) -> None:
         print(f"{gray}  No events recorded in this session.{reset}")
         return
 
+    from .display import format_finding
+    from .flags import Finding, find_flags
+
+    flags_at: dict[int, list[Finding]] = {}
+    for finding in find_flags(session):
+        flags_at.setdefault(max(finding.events), []).append(finding)
+
     for i, event in enumerate(session.events):
         if i > 0:
             prev_t = datetime.fromisoformat(session.events[i - 1].timestamp.replace("Z", "+00:00")).timestamp()
@@ -95,6 +102,8 @@ def replay(session_path: str, speed: float = 1.0) -> None:
         print(format_event(_format_time(event.timestamp), event.type, event.path, event.risk, event.reason))
         for line in event_details(event):
             print(line)
+        for finding in flags_at.get(i + 1, []):
+            print(format_finding(finding))
 
     print(session_summary(session.summary, session_path))
 

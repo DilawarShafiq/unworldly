@@ -25,11 +25,13 @@ from watchdog.events import (
 from watchdog.observers import Observer
 
 from .agent_detect import detect_agent, detect_model, find_agent_roots
+from .canary import canary_files, canary_values, used_in
 from .command_monitor import create_command_monitor
 from .command_risk import assess_command_risk
 from .config import load_config
 from .content import ContentTracker
-from .display import agent_badge, banner, format_event, session_summary, watch_header
+from .display import agent_badge, banner, format_event, format_finding, session_summary, watch_header
+from .flags import FlagEngine
 from .hipaa_risk import assess_hipaa_command_risk, assess_hipaa_file_risk
 from .risk import assess_risk, should_ignore
 from .session import add_checkpoint, add_event, close_session, create_session, ensure_sessions_dir, save_session
@@ -65,16 +67,44 @@ def _real(path: str) -> str:
     return resolved
 
 
+class _Flagger:
+    """Runs the behaviour-flag rules live, printing each finding once as it fires."""
+
+    def __init__(self, session: Session) -> None:
+        self.session = session
+        self.engine = FlagEngine()
+        self.lock = threading.Lock()
+
+    def after(self, event: WatchEvent) -> None:
+        with self.lock:
+            number = len(self.session.events)
+            for i in range(len(self.session.events) - 1, -1, -1):
+                if self.session.events[i] is event:
+                    number = i + 1
+                    break
+            for finding in self.engine.process(number, event):
+                print(format_finding(finding))
+
+
 class _UnworldlyHandler(FileSystemEventHandler):
     """Watchdog event handler that records file changes."""
 
-    def __init__(self, abs_dir: str, session: Session, hipaa: bool = False, on_danger: str | None = None) -> None:
+    def __init__(
+        self,
+        abs_dir: str,
+        session: Session,
+        hipaa: bool = False,
+        on_danger: str | None = None,
+        flagger: _Flagger | None = None,
+    ) -> None:
         super().__init__()
         self.abs_dir = abs_dir
         self.session = session
         self.hipaa = hipaa
         self.on_danger = on_danger
-        self.content = ContentTracker(abs_dir)
+        self.flagger = flagger
+        self.canary_files = canary_files(abs_dir)
+        self.content = ContentTracker(abs_dir, canaries=canary_values(abs_dir))
 
     def _handle(self, event: FileSystemEvent) -> None:
         # Never let one odd event (a temp file that vanished, a path on another drive)
@@ -102,30 +132,33 @@ class _UnworldlyHandler(FileSystemEventHandler):
             risk_result = assess_risk(relative_path, event_type)
         now = datetime.now(timezone.utc)
 
-        change = self.content.describe(relative_path, event_type, risk_result.level)
+        level, reason = risk_result.level, risk_result.reason
+        posix_path = relative_path.replace(os.sep, "/")
+        if posix_path in self.canary_files:
+            level, reason = RiskLevel.DANGER, "Canary file touched (decoy credentials)"
+
+        change = self.content.describe(relative_path, event_type, level)
+        if change.canary:
+            level, reason = RiskLevel.DANGER, f"Canary credential written into {posix_path}"
+        elif change.secret:
+            level, reason = RiskLevel.DANGER, f"Secret written into {posix_path} ({change.secret})"
         watch_event = WatchEvent(
             timestamp=now.isoformat(),
             type=event_type,
             path=relative_path,
-            risk=risk_result.level,
-            reason=risk_result.reason,
+            risk=level,
+            reason=reason,
             before_hash=change.before_hash,
             after_hash=change.after_hash,
             diff=change.diff,
         )
 
         add_event(self.session, watch_event)
-        print(
-            format_event(
-                _format_time(now),
-                event_type,
-                relative_path,
-                risk_result.level,
-                risk_result.reason,
-            )
-        )
+        print(format_event(_format_time(now), event_type, relative_path, level, reason))
+        if self.flagger is not None:
+            self.flagger.after(watch_event)
 
-        if self.on_danger and risk_result.level.value == "danger":
+        if self.on_danger and level == RiskLevel.DANGER:
             from .alerts import fire_alert
 
             fire_alert(self.on_danger, watch_event, self.session)
@@ -196,8 +229,10 @@ class _OutsideHandler(FileSystemEventHandler):
         reason: str,
         only_file: str | None,
         on_danger: str | None,
+        flagger: _Flagger | None = None,
     ) -> None:
         super().__init__()
+        self.flagger = flagger
         self.home = home
         self.session = session
         self.abs_dir = abs_dir
@@ -231,6 +266,8 @@ class _OutsideHandler(FileSystemEventHandler):
         )
         add_event(self.session, watch_event)
         print(format_event(_format_time(now), event_type, display_path, risk, reason))
+        if self.flagger is not None:
+            self.flagger.after(watch_event)
         if self.on_danger and risk == RiskLevel.DANGER:
             from .alerts import fire_alert
 
@@ -248,7 +285,12 @@ class _OutsideHandler(FileSystemEventHandler):
 
 
 def schedule_outside_watches(
-    observer: Any, session: Session, abs_dir: str, on_danger: str | None, home: str | None = None
+    observer: Any,
+    session: Session,
+    abs_dir: str,
+    on_danger: str | None,
+    home: str | None = None,
+    flagger: _Flagger | None = None,
 ) -> list[str]:
     """Watch the sensitive locations that exist on this machine; returns what is watched."""
     home = _real(home or os.path.expanduser("~"))
@@ -258,10 +300,10 @@ def schedule_outside_watches(
         if not os.path.exists(target) or _inside(target, abs_dir):
             continue
         if recursive and os.path.isdir(target):
-            handler = _OutsideHandler(home, session, abs_dir, risk, reason, None, on_danger)
+            handler = _OutsideHandler(home, session, abs_dir, risk, reason, None, on_danger, flagger)
             observer.schedule(handler, target, recursive=True)
         elif not recursive and os.path.isfile(target):
-            handler = _OutsideHandler(home, session, abs_dir, risk, reason, target, on_danger)
+            handler = _OutsideHandler(home, session, abs_dir, risk, reason, target, on_danger, flagger)
             observer.schedule(handler, os.path.dirname(target), recursive=False)
         else:
             continue
@@ -329,10 +371,14 @@ def watch(
         print()
 
     # Set up watchdog observer
-    handler = _UnworldlyHandler(abs_dir, session, hipaa=hipaa_enabled, on_danger=on_danger)
+    flagger = _Flagger(session)
+    command_canaries = canary_values(abs_dir)
+    handler = _UnworldlyHandler(abs_dir, session, hipaa=hipaa_enabled, on_danger=on_danger, flagger=flagger)
     observer = Observer()
     observer.schedule(handler, abs_dir, recursive=True)
-    outside_watched = schedule_outside_watches(observer, session, abs_dir, on_danger) if outside else []
+    outside_watched = (
+        schedule_outside_watches(observer, session, abs_dir, on_danger, flagger=flagger) if outside else []
+    )
     observer.start()
     if outside_watched:
         print(f"  \033[90mAlso watching outside the project: {', '.join(outside_watched)}\033[0m")
@@ -346,27 +392,23 @@ def watch(
             risk_result = assess_command_risk(cmd.executable, cmd.args, config.commands)
         now = datetime.now(timezone.utc)
         command_str = " ".join([cmd.executable] + cmd.args)
+        level, reason = risk_result.level, risk_result.reason
+        if command_canaries and used_in(command_str, command_canaries):
+            level, reason = RiskLevel.DANGER, "Canary credential used in a command"
 
         watch_event = WatchEvent(
             timestamp=now.isoformat(),
             type=EventType.COMMAND,
             path=command_str,
-            risk=risk_result.level,
-            reason=risk_result.reason,
+            risk=level,
+            reason=reason,
             command=cmd,
         )
 
         add_event(session, watch_event)
-        print(
-            format_event(
-                _format_time(now),
-                EventType.COMMAND,
-                command_str,
-                risk_result.level,
-                risk_result.reason,
-            )
-        )
-        if on_danger and risk_result.level.value == "danger":
+        print(format_event(_format_time(now), EventType.COMMAND, command_str, level, reason))
+        flagger.after(watch_event)
+        if on_danger and level == RiskLevel.DANGER:
             from .alerts import fire_alert
 
             fire_alert(on_danger, watch_event, session)

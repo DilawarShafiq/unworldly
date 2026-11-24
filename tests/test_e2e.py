@@ -209,3 +209,10 @@ def test_show_prints_one_event(recorded: Path) -> None:
     assert result.returncode == 0, result.stdout + result.stderr
     assert "After (sha256)" in result.stdout and "print('hi')" in result.stdout
     assert _cli("show", "9999", cwd=recorded).returncode == 1
+
+
+def test_flags_command_runs_on_a_real_session(recorded: Path) -> None:
+    result = _cli("flags", cwd=recorded)
+    assert result.returncode in (0, 1), result.stdout + result.stderr
+    assert "Traceback" not in result.stderr
+    assert _cli("flags", "--json", cwd=recorded).stdout.strip().startswith("[")

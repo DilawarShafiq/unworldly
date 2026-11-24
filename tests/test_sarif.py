@@ -103,7 +103,8 @@ def test_export_sarif_creates_file(tmp_path: pytest.TempPathFactory) -> None:
     assert len(data["runs"][0]["results"]) == 1
 
 
-def test_sarif_has_five_rules() -> None:
+def test_sarif_rules_include_behaviour_flags() -> None:
     from unworldly.sarif import _RULES
 
-    assert len(_RULES) == 5
+    ids = [r["id"] for r in _RULES]
+    assert ids == ["UW001", "UW002", "UW003", "UW004", "UW005", "UW010"]

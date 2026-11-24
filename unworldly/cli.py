@@ -263,6 +263,93 @@ def show(number: int, session: str | None) -> None:
         sys.exit(1)
 
 
+# ── flags ─────────────────────────────────────────────────────────────────────
+
+
+@cli.command()
+@click.argument("session", required=False)
+@click.option("--json", "as_json", is_flag=True, default=False, help="Print findings as JSON.")
+def flags(session: str | None, as_json: bool) -> None:
+    """List behaviour flags: risky sequences, supply-chain, git, loops.
+
+    Flags are computed from the signed record, so they can be re-run on any
+    session. Exit code 1 if any danger flag is found (for CI).
+    """
+    import json as _json
+
+    from .display import format_finding
+    from .flags import find_flags
+    from .types import RiskLevel
+
+    session_path = session or get_latest_session(os.getcwd())
+    if not session_path:
+        click.echo("No sessions found. Run `unworldly watch` first.", err=True)
+        sys.exit(1)
+    findings = find_flags(load_session(session_path))
+    if as_json:
+        click.echo(_json.dumps([f.to_dict() for f in findings], indent=2))
+    elif not findings:
+        click.echo("\n  \033[32m✓ No behaviour flags in this session\033[0m\n")
+    else:
+        click.echo("")
+        for finding in findings:
+            click.echo(format_finding(finding))
+        click.echo("")
+    sys.exit(1 if any(f.level == RiskLevel.DANGER for f in findings) else 0)
+
+
+# ── canary ────────────────────────────────────────────────────────────────────
+
+
+@cli.group()
+def canary() -> None:
+    """Plant decoy credentials and get flagged if anything uses them.
+
+    Opt-in. Reading the decoy can't be seen; using its values can.
+    """
+
+
+@canary.command(name="plant")
+@click.argument("directory", default=".")
+@click.option("--name", default=".env.canary", help="Decoy file name (default: .env.canary).")
+def canary_plant(directory: str, name: str) -> None:
+    """Write a decoy credentials file into the project."""
+    from .canary import plant
+
+    try:
+        record = plant(os.path.abspath(directory), name)
+    except FileExistsError as exc:
+        click.echo(str(exc), err=True)
+        sys.exit(1)
+    click.echo(f"  Planted decoy credentials in {record['file']}")
+    click.echo("  Any use of them during `unworldly watch` is flagged as danger.")
+    click.echo("  The decoy is added to .gitignore when one exists. Remove with `unworldly canary remove`.")
+
+
+@canary.command(name="list")
+@click.argument("directory", default=".")
+def canary_list(directory: str) -> None:
+    """Show planted decoys (not their values)."""
+    from .canary import load
+
+    planted = load(os.path.abspath(directory))
+    if not planted:
+        click.echo("  No canaries planted. Run `unworldly canary plant`.")
+        return
+    for c in planted:
+        click.echo(f"  {c.get('file')}  (planted {c.get('created', '?')[:19]})")
+
+
+@canary.command(name="remove")
+@click.argument("directory", default=".")
+def canary_remove(directory: str) -> None:
+    """Delete all planted decoys."""
+    from .canary import remove
+
+    removed = remove(os.path.abspath(directory))
+    click.echo(f"  Removed {len(removed)} decoy file(s)." if removed else "  No canaries to remove.")
+
+
 # ── diff ──────────────────────────────────────────────────────────────────────
 
 

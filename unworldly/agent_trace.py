@@ -28,6 +28,7 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any, TypeVar
 
+from .canary import canary_values, used_in
 from .session import add_event, close_session, create_session, ensure_sessions_dir, save_session
 from .types import AgentInfo, CommandInfo, EventType, RiskLevel, Session, WatchEvent
 
@@ -93,8 +94,41 @@ _ASSIGNMENT = re.compile(
 )
 
 
+# Well-known credential formats. Used both to flag a secret written into code and to
+# make sure that same secret is redacted from anything stored.
+SECRET_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
+    ("private key", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
+    ("AWS access key", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
+    ("GitHub token", re.compile(r"\b(gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{22,})")),
+    ("Slack token", re.compile(r"\bxox[abprs]-[A-Za-z0-9-]{10,}")),
+    ("Stripe live key", re.compile(r"\b[sr]k_live_[A-Za-z0-9]{16,}")),
+    ("Google API key", re.compile(r"\bAIza[0-9A-Za-z_\-]{35}")),
+    ("Anthropic API key", re.compile(r"\bsk-ant-[A-Za-z0-9_\-]{20,}")),
+    ("OpenAI-style API key", re.compile(r"\bsk-(proj-)?[A-Za-z0-9_\-]{20,}")),
+    ("JWT", re.compile(r"\beyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}")),
+]
+# A secret-looking name assigned a quoted literal of 8+ characters.
+_LITERAL_SECRET = re.compile(
+    r"(?i)(secret|token|passw(or)?d|passwd|api[_-]?key|access[_-]?key|private[_-]?key)\w*[\"']?\s*[:=]\s*[\"']([^\"'\s]{8,})[\"']"
+)
+_PLACEHOLDER = re.compile(r"(?i)(\$\{|<|your|example|changeme|placeholder|xxxx|dummy|\*\*\*)")
+
+
+def find_secret(text: str) -> str | None:
+    """The kind of credential found in ``text``, or None. Ignores obvious placeholders."""
+    for kind, pattern in SECRET_PATTERNS:
+        if pattern.search(text):
+            return kind
+    match = _LITERAL_SECRET.search(text)
+    if match and not _PLACEHOLDER.search(match.group(3)):
+        return "hard-coded secret"
+    return None
+
+
 def redact_text(text: str) -> str:
-    """Redact secrets from free text such as a file diff: assignments, tokens, emails, blobs."""
+    """Redact secrets from free text such as a file diff: known key formats, assignments, tokens, emails, blobs."""
+    for _kind, pattern in SECRET_PATTERNS:
+        text = pattern.sub(REDACTED, text)
     text = _redact_str(text)  # bearer tokens first, so `Authorization: Bearer x` loses the token itself
     return _ASSIGNMENT.sub(lambda m: f"{m.group(1)}{m.group(2)}{REDACTED}", text)
 
@@ -174,6 +208,7 @@ class AgentTraceRecorder:
     ) -> None:
         self.abs_dir = os.path.abspath(directory)
         self.redact = redact
+        self._canaries = canary_values(self.abs_dir)
         self.session: Session = create_session(self.abs_dir, tag=tag)
         self.session.capture_source = capture_source
         if agent_name:
@@ -205,6 +240,8 @@ class AgentTraceRecorder:
         if risk is None:
             risk, heuristic_reason = assess_tool_risk(tool, params)
             reason = reason or heuristic_reason
+        if self._canaries and used_in(f"{tool} {params!r}", self._canaries):
+            risk, reason = RiskLevel.DANGER, "Canary credential used in a tool call"
 
         stored_params = redact_params(params) if self.redact else params
         preview = _preview(stored_params)

@@ -67,6 +67,17 @@ _RULES = [
         "defaultConfiguration": {"level": "note"},
         "helpUri": "https://github.com/DilawarShafiq/unworldly#risk-levels",
     },
+    {
+        "id": "UW010",
+        "name": "AgentBehaviourFlag",
+        "shortDescription": {"text": "Risky agent behaviour across events"},
+        "fullDescription": {
+            "text": "A chain of agent actions matched a behaviour rule: possible exfiltration, download-then-run, "
+            "persistence, mass deletion, typosquatted package, dangerous git operation, or a stuck loop."
+        },
+        "defaultConfiguration": {"level": "error"},
+        "helpUri": "https://github.com/DilawarShafiq/unworldly#behaviour-flags",
+    },
 ]
 
 
@@ -123,6 +134,30 @@ def _to_sarif(session: Session) -> dict:  # type: ignore[type-arg]
             result["properties"]["unworldly/agent"] = session.agent.name
 
         results.append(result)
+
+    from .flags import find_flags
+
+    for finding in find_flags(session):
+        results.append(
+            {
+                "ruleId": "UW010",
+                "level": _LEVEL[finding.level],
+                "message": {"text": finding.message},
+                "locations": [
+                    {
+                        "physicalLocation": {
+                            "artifactLocation": {"uri": "agent://session", "uriBaseId": "%SRCROOT%"},
+                            "region": {"startLine": 1},
+                        }
+                    }
+                ],
+                "properties": {
+                    "unworldly/sessionId": session.id,
+                    "unworldly/flagKind": finding.kind,
+                    "unworldly/eventNumbers": finding.events,
+                },
+            }
+        )
 
     from .report import capture_coverage
 

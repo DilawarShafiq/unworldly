@@ -188,6 +188,19 @@ def _generate_markdown(session: Session) -> str:
                 f"> {others} command(s) were run by something other than the agent (e.g. you, in another terminal).\n\n"
             )
 
+    from .flags import find_flags
+
+    found = find_flags(session)
+    if found:
+        md += "## Behaviour Flags\n\n"
+        md += "> Computed from the signed record: chains of events, installs, git operations, loops.\n\n"
+        md += "| Level | Kind | Finding | Events |\n|-------|------|---------|--------|\n"
+        for f in found:
+            level = "🚨 DANGER" if f.level.value == "danger" else "⚠️ Caution"
+            where = ", ".join(f"#{n}" for n in f.events)
+            md += f"| {level} | {f.kind} | {f.message.replace('|', '/')} | {where} |\n"
+        md += "\n"
+
     changed = [e for e in events if e.diff][:20]
     if changed:
         md += "## File Changes\n\n"
@@ -314,6 +327,16 @@ def report(
             time_str = _format_time(e.timestamp)
             action = "$> CMD" if e.type.value == "command" else e.type.value.upper()
             print(f"{yellow}    {time_str}  {action}  {e.path}  — {e.reason}{reset}")
+        print("")
+
+    from .display import format_finding
+    from .flags import find_flags
+
+    found = find_flags(session)
+    if found:
+        print(f"\033[1;35m  Behaviour Flags:{reset}")
+        for finding in found:
+            print(format_finding(finding))
         print("")
 
     if summary.risk_score >= 7:

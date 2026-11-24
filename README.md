@@ -218,6 +218,33 @@ access → **danger**), and you can pass an explicit `risk=` to override.
 - **Configurable** — Custom risk patterns via `.unworldly/config.json` allowlist/blocklist
 - **Cross-platform** — macOS, Linux, Windows. Runs anywhere Python runs
 
+## Behaviour Flags
+
+Single events are scored as they happen. Flags look at the **chain** of what an agent did, and are computed from the signed record, so they can be re-run on any past session:
+
+| Flag | Fires when |
+|------|-----------|
+| **Possible exfiltration** | A secret file is touched or read (`.env`, keys, `~/.aws/credentials`), then a network command runs (`curl`, `scp`, `nc`, `Invoke-WebRequest`…) within 10 minutes |
+| **Download then run** | A download is piped into a shell (`curl … \| sh`), or a downloaded file is then executed |
+| **Persistence** | A shell startup file or PowerShell profile changes and a network command runs, in either order |
+| **Mass deletion** | 20+ files deleted within 60 seconds |
+| **Push after credentials** | Keys or cloud credentials outside the project change, then `git push` |
+| **Supply chain** | A likely typosquat is installed (`reqeusts`, `lodahs`), or a package comes from a URL, git repo or custom index (pip, npm, yarn, pnpm, bun, uv, poetry, cargo, gem) |
+| **Dangerous git** | Force-push, remote branch delete, `reset --hard`, `clean -f`, `branch -D`, history rewrite, `--no-verify`, `git add .env` |
+| **Secret written into code** | An added line contains an AWS key, private key, GitHub/Slack/Stripe/Google/OpenAI/Anthropic key, JWT or hard-coded password (the stored diff stays redacted) |
+| **Stuck agent** | The same command 5 times in 10 minutes, or one file rewritten 10 times in 5 minutes |
+
+```bash
+unworldly flags            # list flags for the latest session; exit 1 if any is danger (CI-friendly)
+unworldly flags --json     # machine-readable
+```
+
+Flags also appear live in `watch`, in `replay`, in reports and in SARIF (rule `UW010`).
+
+**Canary tripwires (opt-in).** `unworldly canary plant` writes a decoy `.env.canary` with unique fake credentials (and adds it to `.gitignore`). If those values ever appear in a command, a file the agent writes, or a tool call, Unworldly raises a danger event. Nothing legitimate should use them. `unworldly canary list` / `remove`.
+
+**Honest limits:** no network lookups, so a brand-new malicious package with a unique name can't be judged by age or popularity; reading a file can't be seen by file watching, only using what was read; loop detection looks at repetition, since poll mode has no exit codes.
+
 ## ISO 42001 Audit Evidence
 
 Unworldly produces evidence for key controls of the [ISO 42001 AI Management System](https://www.iso.org/standard/81230.html) standard. It supports your compliance work; it does not make an organisation compliant or certified.

@@ -14,7 +14,7 @@ import os
 import subprocess
 from dataclasses import dataclass
 
-from .agent_trace import redact_text
+from .agent_trace import find_secret, redact_text
 from .types import EventType, RiskLevel
 
 MAX_HASH_BYTES = 5 * 1024 * 1024  # larger files are recorded as "tooLarge"
@@ -29,6 +29,8 @@ class FileChange:
     before_hash: str | None = None
     after_hash: str | None = None
     diff: str | None = None
+    secret: str | None = None  # kind of credential found in added lines (before redaction)
+    canary: bool = False  # a planted canary value appeared in added lines
 
 
 def _sha256(data: bytes) -> str:
@@ -59,8 +61,9 @@ def _cap(diff_lines: list[str]) -> str:
 class ContentTracker:
     """Remembers the last seen version of each file in a session to describe changes."""
 
-    def __init__(self, abs_dir: str) -> None:
+    def __init__(self, abs_dir: str, canaries: list[str] | None = None) -> None:
         self.abs_dir = abs_dir
+        self.canaries = [c for c in (canaries or []) if c]
         self._last: dict[str, tuple[str, str | None]] = {}  # rel path -> (hash, text or None)
         self._in_git: bool | None = None
 
@@ -132,6 +135,9 @@ class ContentTracker:
                     )
                 )
                 if lines:
+                    added = "".join(ln for ln in lines if ln.startswith("+") and not ln.startswith("+++"))
+                    change.secret = find_secret(added)
+                    change.canary = any(value in added for value in self.canaries)
                     change.diff = redact_text(_cap([ln if ln.endswith("\n") else ln + "\n" for ln in lines]))
         self._last[rel] = (change.after_hash, text if risk != RiskLevel.DANGER else None)
         return change

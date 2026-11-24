@@ -2,6 +2,14 @@
 
 All notable changes to Unworldly are documented here.
 
+## [0.9.0] - 2026-11-25
+
+### Added
+- **Behaviour flags** computed from the signed record (never stored, so they re-run on old sessions): possible exfiltration (secret touched or read, then a network command), download piped into a shell or downloaded-then-run, persistence (startup file + network), mass deletion, git push after credentials changed outside the project, supply-chain (likely typosquats against a bundled list of well-known packages; installs from URLs, git or custom indexes, for pip/uv/poetry/pipx/npm/yarn/pnpm/bun/cargo/gem), dangerous git operations, and stuck loops (repeated commands or rewrites).
+- **`unworldly flags [session] [--json]`**, exit code 1 on any danger flag. Flags also show live in `watch`, in `replay`, in terminal and markdown reports, and in SARIF as rule `UW010`.
+- **Secrets written into code:** added lines are scanned before redaction for AWS keys, private keys, GitHub, Slack, Stripe, Google, OpenAI and Anthropic keys, JWTs and hard-coded passwords; the event is raised to danger. The same patterns are now always redacted from stored diffs.
+- **Canary tripwires (opt-in):** `unworldly canary plant | list | remove`. Use of the decoy values in a command, a written file or a tool call is a danger event; touching the decoy file too.
+
 ## [0.8.3] - 2026-11-25
 
 ### Fixed

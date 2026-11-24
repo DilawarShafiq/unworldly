@@ -6,6 +6,8 @@ event formatting, and session summaries.
 
 from __future__ import annotations
 
+from typing import Any
+
 from ._version import __version__
 from .integrity import VerifyResult
 from .types import AgentInfo, EventType, RiskLevel, SessionSummary, WatchEvent
@@ -190,6 +192,17 @@ def agent_badge(agent: AgentInfo) -> str:
         lines.append(f"{gray}    {' · '.join(d for d in details if d)}{reset}")
     lines.append("")
     return "\n".join(lines)
+
+
+def format_finding(finding: Any) -> str:
+    """One behaviour flag (see flags.py), e.g. `  ⚑ FLAG  Possible exfiltration: …`."""
+    magenta_bold = "\033[1;35m"
+    magenta = "\033[35m"
+    gray = "\033[90m"
+    reset = "\033[0m"
+    color = magenta_bold if finding.level == RiskLevel.DANGER else magenta
+    where = ", ".join(f"#{n}" for n in finding.events)
+    return f"{color}  ⚑ FLAG  {finding.message}{reset} {gray}({finding.kind}; events {where}){reset}"
 
 
 def diff_stats(diff: str) -> tuple[int, int]:
