@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import importlib.util
 import platform
-import shutil
 import sys
 from dataclasses import dataclass, field
 
@@ -65,22 +64,21 @@ def run_doctor(directory: str = ".") -> DoctorReport:
     else:
         report.add("L1 file capture", WARN, "watchdog not importable — file changes will NOT be captured")
 
-    # L1 — command capture (poll mode)
-    is_windows = sys.platform == "win32"
-    poll_tool = "wmic" if is_windows else "ps"
-    if shutil.which(poll_tool):
+    # L1 — command capture (poll mode): probe the real backend, not just a binary name
+    from .command_monitor import create_command_monitor
+
+    if create_command_monitor() is not None:
         report.add(
             "L1 command capture (poll)",
             WARN,
-            f"`{poll_tool}` present, but poll mode is best-effort — short-lived commands can be missed. "
+            "process listing works, but poll mode is best-effort — short-lived commands can be missed. "
             "Use the shell hook for lossless capture.",
         )
     else:
-        extra = " (wmic is removed on newer Windows)" if is_windows else ""
         report.add(
             "L1 command capture (poll)",
             WARN,
-            f"`{poll_tool}` not found{extra} — poll mode will capture no commands. Install the shell hook.",
+            "process listing failed on this machine — poll mode will capture no commands. Install the shell hook.",
         )
 
     # L1 — command capture (shell hook)
@@ -103,15 +101,16 @@ def run_doctor(directory: str = ".") -> DoctorReport:
     report.add(
         "L2/L3 tool-call capture",
         INFO,
-        "Available for SDK/custom/MCP agents — wrap tools with AgentTraceRecorder/@trace_tool "
-        "or MCPCaptureProxy. Not automatic; the agent code opts in.",
+        "Available for SDK/custom/MCP agents — wrap tools with AgentTraceRecorder/@trace_tool, "
+        "or put `unworldly mcp-proxy` in front of an MCP server (no agent code changes).",
     )
 
-    # L4 — OTel (not yet implemented)
+    # L4 — OTel (file import available; live receiver not yet)
     report.add(
         "L4 OpenTelemetry ingestion",
         INFO,
-        "Planned — will capture no-code/cloud agents that export OTel GenAI spans. Not available yet.",
+        "Available as file import — `unworldly collect <spans.json>` maps OTel GenAI spans into a sealed "
+        "session. A live OTLP receiver is not available yet.",
     )
 
     # HIPAA

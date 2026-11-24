@@ -3,7 +3,7 @@
 Implements SHA-256 hash chains on events and session-level seals
 for tamper-evident audit trails.
 
-ISO 42001 A.6.2.8: Defensible, immutable event logs.
+ISO 42001 A.6.2.8: Defensible, tamper-evident event logs.
 """
 
 from __future__ import annotations

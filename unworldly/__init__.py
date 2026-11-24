@@ -2,7 +2,7 @@
 
 Records everything AI agents do on your system -- file changes AND shell
 commands -- replays sessions like a DVR, flags dangerous behavior in
-real-time, and produces tamper-proof, ISO 42001-compliant audit trails.
+real-time, and produces tamper-evident audit trails (ISO 42001 / SOC 2 evidence).
 """
 
 from ._version import __version__

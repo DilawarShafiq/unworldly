@@ -6,10 +6,9 @@
 [![PyPI version](https://img.shields.io/pypi/v/unworldly-recorder.svg)](https://pypi.org/project/unworldly-recorder/)
 [![PyPI downloads](https://img.shields.io/pypi/dm/unworldly-recorder.svg)](https://pypi.org/project/unworldly-recorder/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![ISO 42001](https://img.shields.io/badge/ISO_42001-Compliant-blue.svg)](https://www.iso.org/standard/81230.html)
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
 
-**The black box for AI coding agents.** Records the file changes and shell commands your coding agent makes on your machine — replays the session like a DVR, flags risky actions, and seals it into a tamper-proof, ISO 42001-compliant audit trail.
+**The black box for AI agents.** Records what your agents *do* — the file changes and shell commands of local coding agents automatically, plus tool calls from SDK, MCP and OpenTelemetry agents — replays the session like a DVR, flags risky actions, and seals it into a tamper-evident audit trail you can use as ISO 42001 / SOC 2 evidence.
 
 > You wouldn't run code without logs. Why are you letting a coding agent edit your machine without a black box?
 
@@ -31,11 +30,11 @@ We'd rather tell you precisely what it captures than overpromise. See **[What it
 
 Coding agents edit files, run commands, install packages, and touch credentials — often unattended. When the session ends, you have no durable, verifiable record of what actually happened on disk and in your shell. Unworldly gives you one.
 
-- Built for **local coding agents** — Claude Code, Cursor, Aider, Cline, and any tool that edits files / runs shell commands
+- Works with **local coding agents** out of the box — Claude Code, Cursor, Aider, Cline, and any tool that edits files / runs shell commands — and with **SDK, MCP and OpenTelemetry agents** through capture adapters (see [what it captures](#what-it-captures--and-what-it-cant-see))
 - **Zero interference** — passive monitoring, never slows your agent down
 - **Local-first** — your data never leaves your machine. Zero cloud. Zero telemetry
-- **Tamper-proof** — SHA-256 hash chain on every event. Edit the log and the chain breaks
-- **ISO 42001 aligned** — implements key audit-trail controls for AI management systems
+- **Tamper-evident** — SHA-256 hash chain on every event. Edit an event and the chain breaks
+- **Audit evidence** — supports ISO 42001 and SOC 2 audit-trail controls (evidence, not certification)
 
 ## Quick Start
 
@@ -195,8 +194,8 @@ access → **danger**), and you can pass an explicit `risk=` to override.
 | Coding-agent-agnostic | Any local coding agent | Python SDK only | OpenClaw only | Per-agent setup |
 | File monitoring | Real-time | No | Audit only | Manual |
 | Command capture | Real-time | No | Pattern scan | Manual |
-| Tamper-proof logs | SHA-256 hash chain | No | No | No |
-| ISO 42001 compliant | Yes | No | Partial | No |
+| Tamper-evident logs | SHA-256 hash chain | No | No | No |
+| ISO 42001 audit evidence | Yes | No | Partial | No |
 | Local-first / zero cloud | Yes | Cloud dashboard | Yes | Depends |
 | Setup time | 1 command | SDK integration | Config required | Hours |
 | Agent identity detection | Automatic | N/A | N/A | Manual |
@@ -207,16 +206,18 @@ access → **danger**), and you can pass an explicit `risk=` to override.
 - **Command Detection** — Captures shell commands (npm install, curl, rm -rf, sudo) alongside file changes. Lossless in [shell-hook mode](#what-it-captures--and-what-it-cant-see); best-effort in default poll mode
 - **Agent Identity** — Auto-detects which AI agent is running (8 agents supported)
 - **Risk Engine** — Scores every action: credential access, destructive commands, network calls, mass deletions
-- **Tamper-Proof Logs** — SHA-256 hash chain on every event. Modify one event and the chain breaks
+- **Tamper-Evident Logs** — SHA-256 hash chain on every event. Modify one event and the chain breaks
 - **Verify** — Cryptographic integrity verification. Exit code tells you if the session was tampered with
 - **Replay** — Step through every action with a color-coded terminal UI
 - **Report** — Generate terminal or markdown security reports with integrity verification
 - **Configurable** — Custom risk patterns via `.unworldly/config.json` allowlist/blocklist
 - **Cross-platform** — macOS, Linux, Windows. Runs anywhere Python runs
 
-## ISO 42001 Compliance
+## ISO 42001 Audit Evidence
 
-Unworldly implements key controls from the [ISO 42001 AI Management System](https://www.iso.org/standard/81230.html) standard:
+Unworldly produces evidence for key controls of the [ISO 42001 AI Management System](https://www.iso.org/standard/81230.html) standard. It supports your compliance work; it does not make an organisation compliant or certified.
+
+> **Integrity, honestly:** the hash chain detects edits, deletions and reordering. It is not yet signed, so someone who rewrites the session file *and* recomputes every hash could pass `verify`. Signed sessions are planned.
 
 | ISO 42001 Control | What It Requires | Unworldly Implementation |
 |-------------------|------------------|--------------------------|

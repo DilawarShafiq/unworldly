@@ -41,3 +41,47 @@ class TestCommandMonitor:
         # The count should not have significantly increased from duplicate reporting
         # (new system processes may appear, but existing ones should not repeat)
         assert len(events) <= count + 5
+
+
+class TestSkipFilter:
+    """The skip filter must match whole names, never fragments (regression: psql was dropped)."""
+
+    def setup_method(self) -> None:
+        from unworldly.command_monitor import CommandMonitor
+
+        self.m = CommandMonitor()
+
+    def test_real_commands_containing_skipped_fragments_are_kept(self) -> None:
+        for exe in ["psql", "/usr/bin/psql", "gpsd", "apsw", r"C:\Tools\psql.exe"]:
+            assert not self.m._should_skip(exe, ["-c", "select 1"]), exe
+
+    def test_unworldly_helpers_are_skipped(self) -> None:
+        for exe in ["ps", "wmic", r"C:\Windows\System32\wbem\WMIC.exe", "conhost.exe", "unworldly"]:
+            assert self.m._should_skip(exe, []), exe
+
+    def test_shell_running_a_command_is_kept_but_bare_shell_skipped(self) -> None:
+        assert not self.m._should_skip("powershell.exe", ["-Command", "Remove-Item x"])
+        assert not self.m._should_skip("cmd.exe", ["/c", "del x"])
+        assert self.m._should_skip("powershell.exe", [])
+        assert self.m._should_skip("pwsh", None)
+
+    def test_node_modules_bin_is_skipped(self) -> None:
+        assert self.m._should_skip("node_modules/.bin/tsc", [])
+
+
+def test_create_command_monitor_returns_none_when_listing_fails(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    from unworldly import command_monitor
+
+    def boom(self):  # type: ignore[no-untyped-def]
+        raise FileNotFoundError("wmic")
+
+    monkeypatch.setattr(command_monitor.CommandMonitor, "_list_processes", boom)
+    assert command_monitor.create_command_monitor() is None
+
+
+def test_process_listing_works_on_this_platform() -> None:
+    from unworldly.command_monitor import create_command_monitor
+
+    monitor = create_command_monitor()
+    assert monitor is not None
+    assert len(monitor._list_processes()) > 0

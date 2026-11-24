@@ -125,7 +125,7 @@ def watch(
     """Start recording AI agent activity in the given directory.
 
     Monitors file changes (create/modify/delete) and shell commands,
-    detects the running AI agent, and saves a tamper-proof session.
+    detects the running AI agent, and saves a tamper-evident session.
 
     Args:
         directory: Directory to watch.

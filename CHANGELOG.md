@@ -2,6 +2,21 @@
 
 All notable changes to Unworldly are documented here.
 
+## [0.6.1] - 2026-11-25
+
+### Fixed
+- **Command capture on Windows**: `watch` recorded no commands on newer Windows, where `wmic` has been removed, and failed silently. Process listing now uses `psutil` on every platform (no helper processes spawned; also fixes macOS, whose `ps` lacks `--no-headers`).
+- **Dropped commands**: the internal-process filter matched name fragments, so real commands such as `psql` (contains "ps") and every `powershell` command were never recorded. It now matches whole executable names, and skips shells only when started bare.
+- **Silent failure**: if process listing cannot work on a machine, `watch` now says so at start instead of silently recording no commands.
+- **`doctor`**: probes the real process-listing backend; reports `unworldly collect` (OTel file import) and `unworldly mcp-proxy` as available.
+
+### Changed
+- **Honest wording**: removed the "ISO 42001 Compliant" badge and "tamper-proof" claims. Unworldly produces *tamper-evident* audit trails that serve as ISO 42001 / SOC 2 evidence; it does not make an organisation compliant. README now states the integrity limit (sessions are not yet signed).
+- New dependency: `psutil`.
+
+### Added
+- End-to-end test that runs the real `unworldly watch` CLI and checks `verify`, `replay`, `report` (incl. `--owasp`, markdown), `touched`, `list`, SARIF export and tamper detection against the recorded session.
+
 ## [0.6.0] - 2026-11-25
 
 ### Added
