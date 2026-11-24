@@ -67,6 +67,10 @@ class WatchEvent:
     reason: str | None = None
     command: CommandInfo | None = None
     hash: str | None = None
+    # Forward-secure signature fields (signed sessions only; see signing.py)
+    seq: int | None = None
+    signature: str | None = None
+    next_public_key: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
@@ -81,6 +85,10 @@ class WatchEvent:
             result["command"] = self.command.to_dict()
         if self.hash is not None:
             result["hash"] = self.hash
+        if self.seq is not None:
+            result["seq"] = self.seq
+            result["signature"] = self.signature
+            result["nextPublicKey"] = self.next_public_key
         return result
 
     @classmethod
@@ -96,6 +104,46 @@ class WatchEvent:
             reason=data.get("reason"),
             command=command,
             hash=data.get("hash"),
+            seq=data.get("seq"),
+            signature=data.get("signature"),
+            next_public_key=data.get("nextPublicKey"),
+        )
+
+
+@dataclass
+class Checkpoint:
+    """A signed recorder checkpoint: a heartbeat while recording, or the clean end.
+
+    Kept apart from ``Session.events`` so views only show agent activity, but it
+    shares the session's signed sequence (``seq``) with the events.
+    """
+
+    kind: str  # "heartbeat" | "end"
+    timestamp: str
+    seq: int
+    digest: str
+    signature: str
+    next_public_key: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "kind": self.kind,
+            "timestamp": self.timestamp,
+            "seq": self.seq,
+            "digest": self.digest,
+            "signature": self.signature,
+            "nextPublicKey": self.next_public_key,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Checkpoint:
+        return cls(
+            kind=data["kind"],
+            timestamp=data["timestamp"],
+            seq=data["seq"],
+            digest=data["digest"],
+            signature=data["signature"],
+            next_public_key=data["nextPublicKey"],
         )
 
 
@@ -175,6 +223,10 @@ class Session:
     tag: str | None = None
     capture_source: str | None = None
     usage: dict[str, int] | None = None  # token usage (informational, not sealed)
+    signing: dict[str, Any] | None = None  # signed-session header (scheme, pk0, identity…)
+    checkpoints: list[Checkpoint] = field(default_factory=list)
+    end_seal: dict[str, Any] | None = None  # identity-signed seal, written at clean shutdown
+    signer: Any = field(default=None, repr=False, compare=False)  # in-memory only, never saved
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
@@ -196,6 +248,11 @@ class Session:
             result["captureSource"] = self.capture_source
         if self.usage is not None:
             result["usage"] = self.usage
+        if self.signing is not None:
+            result["signing"] = self.signing
+            result["checkpoints"] = [c.to_dict() for c in self.checkpoints]
+        if self.end_seal is not None:
+            result["endSeal"] = self.end_seal
         return result
 
     @classmethod
@@ -216,4 +273,7 @@ class Session:
             tag=data.get("tag"),
             capture_source=data.get("captureSource"),
             usage=data.get("usage"),
+            signing=data.get("signing"),
+            checkpoints=[Checkpoint.from_dict(c) for c in data.get("checkpoints", [])],
+            end_seal=data.get("endSeal"),
         )

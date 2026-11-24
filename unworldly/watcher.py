@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import signal
 import sys
+import threading
 import time
 from datetime import datetime, timezone
 
@@ -28,7 +29,8 @@ from .config import load_config
 from .display import agent_badge, banner, format_event, session_summary, watch_header
 from .hipaa_risk import assess_hipaa_command_risk, assess_hipaa_file_risk
 from .risk import assess_risk, should_ignore
-from .session import add_event, create_session, ensure_sessions_dir, save_session
+from .session import add_checkpoint, add_event, close_session, create_session, ensure_sessions_dir, save_session
+from .signing import DEFAULT_HEARTBEAT_SECONDS
 from .types import CommandInfo, EventType, Session, WatchEvent
 
 
@@ -138,7 +140,7 @@ def watch(
                    first); "both" runs the two together.
     """
     abs_dir = os.path.abspath(directory)
-    session = create_session(abs_dir, tag=tag)
+    session = create_session(abs_dir, tag=tag, heartbeat_seconds=DEFAULT_HEARTBEAT_SECONDS)
 
     # ISO 42001 A.3.2: Detect which AI agent is running
     agent = detect_agent()
@@ -227,17 +229,32 @@ def watch(
                     f"and restart your shell for lossless command capture{reset}"
                 )
 
+    if session.signer is None:
+        print(f"  {yellow}⚠ Session signing unavailable — this session will be tamper-evident only{reset}")
+
     # Pre-create session dir and save initial empty session
     ensure_sessions_dir(abs_dir)
     save_session(session, abs_dir)
 
+    # Signed heartbeats prove the recorder was alive; `verify` reports any gaps.
+    heartbeat_stop = threading.Event()
+
+    def _heartbeat() -> None:
+        while not heartbeat_stop.wait(DEFAULT_HEARTBEAT_SECONDS):
+            if add_checkpoint(session, "heartbeat") is not None:
+                save_session(session, abs_dir)
+
+    if session.signer is not None:
+        threading.Thread(target=_heartbeat, daemon=True).start()
+
     # Graceful shutdown
     def _shutdown(signum: int | None = None, frame: object = None) -> None:
+        heartbeat_stop.set()
         for mon in monitors:
             mon.stop()  # type: ignore[attr-defined]
         observer.stop()
         observer.join()
-        session_path = save_session(session, abs_dir)
+        session_path = close_session(session, abs_dir)
         print(session_summary(session.summary, session_path))
         sys.exit(0)
 

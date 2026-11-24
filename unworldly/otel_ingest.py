@@ -24,7 +24,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from .agent_trace import _preview, assess_tool_risk, redact_params
-from .session import add_event, create_session, ensure_sessions_dir, save_session
+from .session import add_event, close_session, create_session, ensure_sessions_dir
 from .types import AgentInfo, CommandInfo, EventType, RiskLevel, Session, WatchEvent
 
 # OTel GenAI semantic-convention attribute keys.
@@ -150,7 +150,7 @@ def spans_to_session(
 
     if save:
         ensure_sessions_dir(abs_dir)
-        save_session(session, abs_dir)
+        close_session(session, abs_dir)
     return session
 
 

@@ -150,8 +150,18 @@ report_cmd.name = "report"
 
 @cli.command()
 @click.argument("session", required=False)
-def verify(session: str | None) -> None:
-    """Verify integrity of a recorded session (tamper detection)."""
+@click.option(
+    "--strict",
+    is_flag=True,
+    default=False,
+    help="Also fail on recording gaps / abnormal end (exit 2) and unsigned legacy sessions (exit 3).",
+)
+def verify(session: str | None, strict: bool) -> None:
+    """Verify integrity of a recorded session (tamper detection).
+
+    Exit codes: 0 verified, 1 tampered; with --strict also 2 for gaps or an
+    abnormal end and 3 for an unsigned legacy session.
+    """
     session_path = session or get_latest_session(os.getcwd())
     if not session_path:
         click.echo("No sessions found. Run `unworldly watch` first.", err=True)
@@ -160,7 +170,13 @@ def verify(session: str | None) -> None:
     print(banner())
     result = verify_session(data)
     print(verify_display(result))
-    sys.exit(0 if result.valid else 1)
+    if not result.valid:
+        sys.exit(1)
+    if strict and result.status == "VERIFIED_WITH_GAPS":
+        sys.exit(2)
+    if strict and result.status == "LEGACY":
+        sys.exit(3)
+    sys.exit(0)
 
 
 # ── list / ls ─────────────────────────────────────────────────────────────────

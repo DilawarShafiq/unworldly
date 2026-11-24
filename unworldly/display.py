@@ -208,12 +208,32 @@ def verify_display(result: VerifyResult) -> str:
         "",
     ]
 
+    yellow = "\033[33m"
+    yellow_bold = "\033[1;33m"
     if result.valid:
-        lines.append(f"{green_bold}  ✓ SESSION INTEGRITY VERIFIED{reset}")
-        lines.append(f"{green}    All {result.total_events} events have valid hash chain{reset}")
-        lines.append(f"{green}    Session seal is intact — no tampering detected{reset}")
+        if result.status == "VERIFIED":
+            lines.append(f"{green_bold}  ✓ SESSION VERIFIED — signed and complete{reset}")
+        elif result.status == "VERIFIED_WITH_GAPS":
+            lines.append(f"{yellow_bold}  ✓ SESSION VERIFIED WITH GAPS — no tampering, but see below{reset}")
+        else:
+            lines.append(f"{green_bold}  ✓ SESSION INTEGRITY VERIFIED (legacy, unsigned){reset}")
+        lines.append(f"{green}    All {result.total_events} events have a valid hash chain{reset}")
+        if result.signed:
+            lines.append(f"{green}    Every record's forward-secure signature is valid{reset}")
+        else:
+            lines.append(
+                f"{yellow}    Unsigned session: tamper-evident only — an editor who recomputes every hash "
+                f"could pass this check{reset}"
+            )
+        if result.abnormal_end:
+            lines.append(
+                f"{yellow}    • No clean end: still recording, or the recorder was stopped abruptly "
+                f"(nothing after that point was recorded){reset}"
+            )
+        for gap in result.gaps:
+            lines.append(f"{yellow}    • {gap}{reset}")
     else:
-        lines.append(f"{red_bold}  ✗ INTEGRITY VERIFICATION FAILED{reset}")
+        lines.append(f"{red_bold}  ✗ TAMPERED — INTEGRITY VERIFICATION FAILED{reset}")
         lines.append("")
         lines.append(f"  Events verified: {white}{result.valid_events}/{result.total_events}{reset}")
         if result.broken_at is not None:
@@ -224,6 +244,12 @@ def verify_display(result: VerifyResult) -> str:
         lines.append(f"{red_bold}  Errors:{reset}")
         for error in result.errors:
             lines.append(f"{red}    • {error}{reset}")
+
+    if result.signed:
+        lines.append("")
+        lines.append(
+            f"{gray}  Signed by identity {result.identity_fingerprint} (key stored in: {result.key_store}){reset}"
+        )
 
     lines.append("")
     return "\n".join(lines)

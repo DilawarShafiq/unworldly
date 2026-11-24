@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
 
-**The black box for AI agents.** Records what your agents *do* — the file changes and shell commands of local coding agents automatically, plus tool calls from SDK, MCP and OpenTelemetry agents — replays the session like a DVR, flags risky actions, and seals it into a tamper-evident audit trail you can use as ISO 42001 / SOC 2 evidence.
+**The black box for AI agents.** Records what your agents *do* — the file changes and shell commands of local coding agents automatically, plus tool calls from SDK, MCP and OpenTelemetry agents — replays the session like a DVR, flags risky actions, and seals it into a signed, tamper-resistant audit trail you can use as ISO 42001 / SOC 2 evidence.
 
 > You wouldn't run code without logs. Why are you letting a coding agent edit your machine without a black box?
 
@@ -33,7 +33,7 @@ Coding agents edit files, run commands, install packages, and touch credentials 
 - Works with **local coding agents** out of the box — Claude Code, Cursor, Aider, Cline, and any tool that edits files / runs shell commands — and with **SDK, MCP and OpenTelemetry agents** through capture adapters (see [what it captures](#what-it-captures--and-what-it-cant-see))
 - **Zero interference** — passive monitoring, never slows your agent down
 - **Local-first** — your data never leaves your machine. Zero cloud. Zero telemetry
-- **Tamper-evident** — SHA-256 hash chain on every event. Edit an event and the chain breaks
+- **Tamper-resistant** — every event is signed with a one-time key that is destroyed straight away. Even someone who later steals the machine's keys can't rewrite what was already recorded ([how](#session-integrity))
 - **Audit evidence** — supports ISO 42001 and SOC 2 audit-trail controls (evidence, not certification)
 
 ## Quick Start
@@ -123,9 +123,9 @@ L2/L3/L4 feed the same risk scoring, secret redaction, SHA-256 hash chain, `veri
   Events: 11  ● Safe: 1  ● Caution: 3  ● Danger: 7
   Risk Score: 7.2/10
 
-  ✓ SESSION INTEGRITY VERIFIED
-    All 11 events have valid hash chain
-    Session seal is intact — no tampering detected
+  ✓ SESSION VERIFIED — signed and complete
+    All 11 events have a valid hash chain
+    Every record's forward-secure signature is valid
 ```
 </details>
 
@@ -194,7 +194,7 @@ access → **danger**), and you can pass an explicit `risk=` to override.
 | Coding-agent-agnostic | Any local coding agent | Python SDK only | OpenClaw only | Per-agent setup |
 | File monitoring | Real-time | No | Audit only | Manual |
 | Command capture | Real-time | No | Pattern scan | Manual |
-| Tamper-evident logs | SHA-256 hash chain | No | No | No |
+| Tamper-resistant logs | Forward-secure signatures + SHA-256 chain | No | No | No |
 | ISO 42001 audit evidence | Yes | No | Partial | No |
 | Local-first / zero cloud | Yes | Cloud dashboard | Yes | Depends |
 | Setup time | 1 command | SDK integration | Config required | Hours |
@@ -206,8 +206,8 @@ access → **danger**), and you can pass an explicit `risk=` to override.
 - **Command Detection** — Captures shell commands (npm install, curl, rm -rf, sudo) alongside file changes. Lossless in [shell-hook mode](#what-it-captures--and-what-it-cant-see); best-effort in default poll mode
 - **Agent Identity** — Auto-detects which AI agent is running (8 agents supported)
 - **Risk Engine** — Scores every action: credential access, destructive commands, network calls, mass deletions
-- **Tamper-Evident Logs** — SHA-256 hash chain on every event. Modify one event and the chain breaks
-- **Verify** — Cryptographic integrity verification. Exit code tells you if the session was tampered with
+- **Tamper-Resistant Logs** — forward-secure Ed25519 signatures on every event, on top of a SHA-256 hash chain
+- **Verify** — checks every signature, the record sequence, recording gaps and the final seal. Exit code tells you if the session was tampered with
 - **Replay** — Step through every action with a color-coded terminal UI
 - **Report** — Generate terminal or markdown security reports with integrity verification
 - **Configurable** — Custom risk patterns via `.unworldly/config.json` allowlist/blocklist
@@ -217,26 +217,38 @@ access → **danger**), and you can pass an explicit `risk=` to override.
 
 Unworldly produces evidence for key controls of the [ISO 42001 AI Management System](https://www.iso.org/standard/81230.html) standard. It supports your compliance work; it does not make an organisation compliant or certified.
 
-> **Integrity, honestly:** the hash chain detects edits, deletions and reordering. It is not yet signed, so someone who rewrites the session file *and* recomputes every hash could pass `verify`. Signed sessions are planned.
-
 | ISO 42001 Control | What It Requires | Unworldly Implementation |
 |-------------------|------------------|--------------------------|
 | **A.3.2** Roles & accountability | Know WHO is acting | Auto-detects agent identity |
 | **A.6.2.8** Event logging | Defensible audit logs | SHA-256 hash-chained events |
 | **A.8** Transparency | Observable AI behavior | Full session replay + reports |
-| **A.9** Accountability | Tamper-evident records | Cryptographic verify command |
+| **A.9** Accountability | Tamper-resistant records | Signed sessions + `verify` |
+
+## Session Integrity
+
+Every session is signed as it is recorded:
+
+- **Forward-secure signatures.** Each event is signed with a one-time Ed25519 key. The next key's public half is locked inside that signature, and the private key is destroyed. Whoever grabs the recorder's key later only gets the *current* one, which can't re-sign anything already written.
+- **Identity key.** A per-user identity key, kept in the OS keychain (an owner-only key file where no keychain exists), signs each session's start and its final seal. `verify` shows which identity signed a session.
+- **Heartbeats.** While recording, a signed heartbeat is written every 30 s, so a paused or killed recorder shows up as a recording gap or an abnormal end, never as silence.
 
 ```bash
-# Verify session integrity — exit 0 = valid, exit 1 = tampered
-unworldly verify
+unworldly verify            # exit 0 = verified, 1 = tampered
+unworldly verify --strict   # also exit 2 = gaps / abnormal end, 3 = unsigned legacy session
 
   Integrity Verification
   ────────────────────────────
 
-  ✓ SESSION INTEGRITY VERIFIED
-    All 47 events have valid hash chain
-    Session seal is intact — no tampering detected
+  ✓ SESSION VERIFIED — signed and complete
+    All 47 events have a valid hash chain
+    Every record's forward-secure signature is valid
+
+  Signed by identity 3f9a1c0e7b2d4a61 (key stored in: keychain)
 ```
+
+**What it protects against:** editing, deleting or reordering anything already recorded (by the agent, a person, or someone who later steals the machine's keys), and silent truncation or a killed recorder (shown as an abnormal end or a gap).
+
+**What it doesn't:** an attacker who controls the recorder *while* it runs can forge what comes after that point (earlier records stay safe), and someone holding your identity key could fabricate a whole new session. Sessions recorded before 0.7 are unsigned and verify as *legacy*: tamper-evident only.
 
 ## Agent Detection
 

@@ -113,6 +113,20 @@ def run_doctor(directory: str = ".") -> DoctorReport:
         "session. A live OTLP receiver is not available yet.",
     )
 
+    # Session signing (forward-secure; identity key in the OS keychain or a key file)
+    try:
+        from .signing import fingerprint, load_identity
+
+        identity = load_identity()
+        where = "the OS keychain" if identity.store == "keychain" else "an owner-only key file (no OS keychain found)"
+        report.add(
+            "Session signing",
+            OK if identity.store == "keychain" else WARN,
+            f"forward-secure signing on; identity {fingerprint(identity.public_hex)} kept in {where}",
+        )
+    except Exception as exc:  # pragma: no cover - depends on the machine
+        report.add("Session signing", WARN, f"unavailable ({exc}) — sessions will be tamper-evident only")
+
     # HIPAA
     if _has_module("unworldly.hipaa_risk"):
         report.add("HIPAA PHI detection", INFO, 'Available — enable with `--hipaa` or config `"hipaa": true`.')

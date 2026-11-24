@@ -2,6 +2,21 @@
 
 All notable changes to Unworldly are documented here.
 
+## [0.7.0] - 2026-11-25
+
+### Added
+- **Signed, forward-secure sessions.** Every event is signed with a one-time Ed25519 key; the next key's public half is committed inside the signature and the private key is destroyed. Someone who later steals the recorder's key cannot alter, remove or reorder anything already recorded, and recomputing the SHA-256 hashes (which defeated unsigned sessions) no longer passes `verify`.
+- **Identity key** in the OS keychain (Windows Credential Manager, macOS Keychain, Linux Secret Service), falling back to an owner-only key file. It signs each session's start and its final seal; `verify` and `doctor` show the identity fingerprint and where the key lives.
+- **Heartbeats and recording gaps.** `watch` writes a signed heartbeat every 30 s and a signed end on clean shutdown. `verify` reports gaps and abnormal ends (recorder killed or paused, or the tail of a session cut off).
+- **`verify` results:** VERIFIED, VERIFIED WITH GAPS, TAMPERED, or LEGACY (unsigned, pre-0.7). New `--strict` flag: exit 2 for gaps / abnormal end, 3 for legacy. Default exit codes are unchanged (0 = not tampered, 1 = tampered).
+- Sessions from `AgentTraceRecorder`, `mcp-proxy` and `collect` are signed the same way.
+- 22 new tests, including a simulated attacker holding the recorder's live key.
+
+### Changed
+- README: integrity claim upgraded from tamper-evident to **tamper-resistant**, with a "Session Integrity" section stating exactly what is and isn't protected.
+- New dependencies: `cryptography` (Ed25519) and `keyring` (OS keychain).
+- Session format: events gain `seq`, `signature`, `nextPublicKey`; sessions gain `signing`, `checkpoints`, `endSeal`. Older sessions still load and verify as legacy.
+
 ## [0.6.1] - 2026-11-25
 
 ### Fixed

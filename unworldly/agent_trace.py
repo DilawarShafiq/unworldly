@@ -28,7 +28,7 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any, TypeVar
 
-from .session import add_event, create_session, ensure_sessions_dir, save_session
+from .session import add_event, close_session, create_session, ensure_sessions_dir, save_session
 from .types import AgentInfo, CommandInfo, EventType, RiskLevel, Session, WatchEvent
 
 _ARG_PREVIEW_LIMIT = 200
@@ -215,8 +215,8 @@ class AgentTraceRecorder:
         return event
 
     def close(self) -> str:
-        """Finalize and re-seal the session; return its path."""
-        self.session_path = save_session(self.session, self.abs_dir)
+        """Finalize the session (signed end + seal); return its path."""
+        self.session_path = close_session(self.session, self.abs_dir)
         return self.session_path
 
     def __enter__(self) -> AgentTraceRecorder:

@@ -36,6 +36,8 @@ dependencies = [
     "watchdog>=3.0.0",
     "rich>=13.0.0",
     "psutil>=5.9.0",
+    "cryptography>=42.0",
+    "keyring>=24.0",
 ]
 
 [project.optional-dependencies]

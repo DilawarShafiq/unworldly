@@ -6,15 +6,18 @@ Sessions are stored as JSON files in .unworldly/sessions/.
 
 from __future__ import annotations
 
+import contextlib
+import hashlib
 import json
 import os
 import secrets
 from datetime import datetime, timezone
+from typing import Any
 
 from ._version import __version__
 from .integrity import compute_session_hash, get_last_hash, sign_event
 from .risk import calculate_risk_score
-from .types import Session, SessionSummary, WatchEvent
+from .types import Checkpoint, Session, SessionSummary, WatchEvent
 
 SESSIONS_DIR = ".unworldly/sessions"
 
@@ -31,9 +34,21 @@ def ensure_sessions_dir(base_dir: str) -> str:
     return dir_path
 
 
-def create_session(directory: str, tag: str | None = None) -> Session:
-    """Create a new empty session."""
-    return Session(
+def create_session(
+    directory: str,
+    tag: str | None = None,
+    sign: bool = True,
+    heartbeat_seconds: float | None = None,
+) -> Session:
+    """Create a new empty session.
+
+    With ``sign=True`` (default) the session is forward-secure signed (see
+    ``signing.py``). If no signing key can be loaded, the session is still
+    recorded, unsigned — recording never fails because of signing.
+    ``heartbeat_seconds`` declares how often the recorder writes heartbeats, so
+    ``verify`` can report recording gaps; None means no heartbeats.
+    """
+    session = Session(
         version=__version__,
         id=generate_id(),
         start_time=datetime.now(timezone.utc).isoformat(),
@@ -49,13 +64,34 @@ def create_session(directory: str, tag: str | None = None) -> Session:
         ),
         tag=tag,
     )
+    if sign:
+        try:
+            from .signing import SessionSigner, load_identity
+
+            signer = SessionSigner(session.id, session.start_time, directory, load_identity(), heartbeat_seconds)
+            session.signer = signer
+            session.signing = signer.header
+        except Exception:
+            session.signer = None  # unsigned (verifies as LEGACY); recording continues
+    return session
+
+
+def _lock(session: Session) -> Any:
+    return session.signer.lock if session.signer is not None else contextlib.nullcontext()
 
 
 def add_event(session: Session, event: WatchEvent) -> None:
-    """Add an event to a session, updating the hash chain and summary."""
+    """Add an event to a session, updating the hash chain, signature and summary."""
+    with _lock(session):
+        _add_event_locked(session, event)
+
+
+def _add_event_locked(session: Session, event: WatchEvent) -> None:
     # Hash chain: sign event with previous hash for tamper-evidence
     previous_hash = get_last_hash(session)
     sign_event(event, previous_hash)
+    if session.signer is not None and event.hash is not None:
+        event.seq, event.signature, event.next_public_key = session.signer.sign(event.hash)
 
     session.events.append(event)
     session.summary.total_events += 1
@@ -76,20 +112,58 @@ def add_event(session: Session, event: WatchEvent) -> None:
     )
 
 
+def checkpoint_digest(session_id: str, kind: str, timestamp: str) -> str:
+    payload = json.dumps({"session": session_id, "kind": kind, "timestamp": timestamp}, sort_keys=True)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def add_checkpoint(session: Session, kind: str) -> Checkpoint | None:
+    """Append a signed checkpoint ("heartbeat" or "end"); no-op for unsigned sessions."""
+    if session.signer is None:
+        return None
+    with session.signer.lock:
+        timestamp = datetime.now(timezone.utc).isoformat()
+        digest = checkpoint_digest(session.id, kind, timestamp)
+        seq, signature, next_pk = session.signer.sign(digest)
+        checkpoint = Checkpoint(kind, timestamp, seq, digest, signature, next_pk)
+        session.checkpoints.append(checkpoint)
+        return checkpoint
+
+
 def save_session(session: Session, base_dir: str) -> str:
     """Save a session to disk and return the file path.
 
     Sets the end time and computes the session integrity hash (seal).
     """
-    session.end_time = datetime.now(timezone.utc).isoformat()
-    # Compute session-level integrity hash (seal the session)
-    session.integrity_hash = compute_session_hash(session)
+    with _lock(session):
+        session.end_time = datetime.now(timezone.utc).isoformat()
+        # Compute session-level integrity hash (seal the session)
+        session.integrity_hash = compute_session_hash(session)
+        return _write(session, base_dir)
+
+
+def _write(session: Session, base_dir: str) -> str:
     dir_path = ensure_sessions_dir(base_dir)
-    filename = f"{session.id}.json"
-    filepath = os.path.join(dir_path, filename)
+    filepath = os.path.join(dir_path, f"{session.id}.json")
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(session.to_dict(), f, indent=2)
     return filepath
+
+
+def close_session(session: Session, base_dir: str) -> str:
+    """Finish a session cleanly: signed ``end`` checkpoint + identity-signed seal.
+
+    Safe to call more than once. A session that is never closed (recorder
+    killed, machine crashed) still verifies, but is reported as ended abnormally.
+    """
+    with _lock(session):
+        if session.signer is None or session.end_seal is not None:
+            return save_session(session, base_dir)
+        end = add_checkpoint(session, "end")
+        save_session(session, base_dir)
+        if end is not None and session.integrity_hash is not None:
+            session.end_seal = session.signer.seal(session.integrity_hash, end.signature)
+        return _write(session, base_dir)
 
 
 def load_session(session_path: str) -> Session:

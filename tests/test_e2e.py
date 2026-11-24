@@ -12,6 +12,7 @@ import os
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -24,6 +25,9 @@ ENV = {
     "PYTHONIOENCODING": "utf-8",
     "NO_COLOR": "1",
     "PYTHONPATH": os.pathsep.join(filter(None, [_REPO, os.environ.get("PYTHONPATH")])),
+    # Never touch the developer's real OS keychain from tests.
+    "UNWORLDLY_KEY_STORE": "file",
+    "UNWORLDLY_HOME": tempfile.mkdtemp(prefix="unworldly-e2e-home-"),
 }
 
 
@@ -115,6 +119,16 @@ def test_watch_records_shell_command(recorded: Path) -> None:
 def test_verify_passes_on_untouched_session(recorded: Path) -> None:
     result = _cli("verify", cwd=recorded)
     assert result.returncode == 0, result.stdout + result.stderr
+    assert "SESSION VERIFIED" in result.stdout and "Signed by identity" in result.stdout
+
+
+def test_session_is_signed_with_heartbeat_declared(recorded: Path) -> None:
+    path = _session_file(recorded)
+    assert path is not None
+    data = json.loads(path.read_text(encoding="utf-8"))
+    assert data["signing"]["scheme"] == "ed25519-fs-v1"
+    assert data["signing"]["heartbeatSeconds"] == 30.0
+    assert all("signature" in e for e in data["events"])
 
 
 @pytest.mark.parametrize(
