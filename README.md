@@ -76,7 +76,7 @@ Unworldly captures agents at four levels — use the one(s) that fit your agent.
 | **L3 MCP** | `unworldly mcp-proxy -- <server>` | Every MCP `tools/call` — no agent code change | Any MCP-using agent |
 | **L4 OpenTelemetry** | `unworldly collect <spans.json>` | `gen_ai.*` tool/model spans + token usage | No-code/cloud agents that export OTel |
 
-L2/L3/L4 feed the same risk scoring, secret redaction, SHA-256 hash chain, `verify`/`report`/`replay` as L1. See [`specs/agent-instrumentation/spec.md`](specs/agent-instrumentation/spec.md).
+L2/L3/L4 feed the same risk scoring, secret redaction, SHA-256 hash chain, `verify`/`report`/`replay` as L1.
 
 ## Live Output
 
@@ -186,9 +186,7 @@ session = MCPCaptureProxy(mcp_client_session, AgentTraceRecorder(agent_name="bot
 ```
 
 Tool calls are risk-scored heuristically (network/egress, deletes, credential
-access → **danger**), and you can pass an explicit `risk=` to override. See
-[`specs/agent-instrumentation/spec.md`](specs/agent-instrumentation/spec.md) for
-the full capture-layer design.
+access → **danger**), and you can pass an explicit `risk=` to override.
 
 ## How It Differs
 

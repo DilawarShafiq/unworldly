@@ -43,3 +43,11 @@ demo/*.cast
 
 # Node (legacy, can be removed later)
 node_modules/
+.claude/
+.specify/
+specs/
+history/
+CLAUDE.md
+PROGRESS.md
+ROADMAP.md
+demo/
