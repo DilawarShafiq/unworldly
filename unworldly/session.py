@@ -11,6 +11,8 @@ import hashlib
 import json
 import os
 import secrets
+import threading
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -130,23 +132,117 @@ def add_checkpoint(session: Session, kind: str) -> Checkpoint | None:
         return checkpoint
 
 
+# Signed sessions are rewritten in full at most this often; in between, new records
+# are appended to a small crash journal next to the session file.
+FLUSH_INTERVAL_SECONDS = 1.0
+
+
+class _Persistence:
+    """In-memory bookkeeping for one session's saves (never serialized)."""
+
+    def __init__(self) -> None:
+        self.last_full = 0.0
+        self.full_events = 0  # records in the last full write of the session file
+        self.full_checkpoints = 0
+        self.journaled_events = 0  # records written to the file or the journal so far
+        self.journaled_checkpoints = 0
+        self.timer: threading.Timer | None = None
+
+
+def _persistence(session: Session) -> _Persistence:
+    if session.persistence is None:
+        session.persistence = _Persistence()
+    state: _Persistence = session.persistence
+    return state
+
+
+def _session_file(base_dir: str, session_id: str) -> str:
+    return os.path.join(ensure_sessions_dir(base_dir), f"{session_id}.json")
+
+
+def journal_path(session_file: str) -> str:
+    return (
+        session_file[: -len(".json")] + ".journal.jsonl"
+        if session_file.endswith(".json")
+        else session_file + ".journal.jsonl"
+    )
+
+
 def save_session(session: Session, base_dir: str) -> str:
     """Save a session to disk and return the file path.
 
-    Sets the end time and computes the session integrity hash (seal).
+    Unsigned sessions are rewritten in full every time. Signed sessions are
+    rewritten in full at most once per ``FLUSH_INTERVAL_SECONDS``; records added
+    in between go to an append-only crash journal immediately, and a deferred
+    flush writes the full file shortly after. This keeps saving cheap on long
+    sessions (constant per event instead of growing with the session) while
+    losing nothing on a crash — ``load_session`` replays the journal, and every
+    journaled record is still checked against its forward-secure signature.
     """
     with _lock(session):
-        session.end_time = datetime.now(timezone.utc).isoformat()
-        # Compute session-level integrity hash (seal the session)
-        session.integrity_hash = compute_session_hash(session)
-        return _write(session, base_dir)
+        if session.signer is None:
+            return _full_save(session, base_dir)
+        state = _persistence(session)
+        if time.monotonic() - state.last_full >= FLUSH_INTERVAL_SECONDS:
+            return _full_save(session, base_dir)
+        _append_journal(session, base_dir, state)
+        if state.timer is None:
+            state.timer = threading.Timer(FLUSH_INTERVAL_SECONDS, _deferred_flush, (session, base_dir))
+            state.timer.daemon = True
+            state.timer.start()
+        return _session_file(base_dir, session.id)
+
+
+def _deferred_flush(session: Session, base_dir: str) -> None:
+    with _lock(session):
+        state = _persistence(session)
+        state.timer = None
+        if state.full_events != len(session.events) or state.full_checkpoints != len(session.checkpoints):
+            # Never crash the recorder; if this fails the journal still holds the records.
+            with contextlib.suppress(Exception):
+                _full_save(session, base_dir)
+
+
+def _full_save(session: Session, base_dir: str) -> str:
+    session.end_time = datetime.now(timezone.utc).isoformat()
+    # Compute session-level integrity hash (seal the session)
+    session.integrity_hash = compute_session_hash(session)
+    path = _write(session, base_dir)
+    if session.signer is not None:
+        state = _persistence(session)
+        state.last_full = time.monotonic()
+        state.full_events = state.journaled_events = len(session.events)
+        state.full_checkpoints = state.journaled_checkpoints = len(session.checkpoints)
+        with contextlib.suppress(FileNotFoundError, PermissionError):
+            os.remove(journal_path(path))
+    return path
+
+
+def _append_journal(session: Session, base_dir: str, state: _Persistence) -> None:
+    lines = [json.dumps({"event": e.to_dict()}) for e in session.events[state.journaled_events :]]
+    lines += [json.dumps({"checkpoint": c.to_dict()}) for c in session.checkpoints[state.journaled_checkpoints :]]
+    if not lines:
+        return
+    with open(journal_path(_session_file(base_dir, session.id)), "a", encoding="utf-8") as fh:
+        fh.write("\n".join(lines) + "\n")
+    state.journaled_events = len(session.events)
+    state.journaled_checkpoints = len(session.checkpoints)
 
 
 def _write(session: Session, base_dir: str) -> str:
-    dir_path = ensure_sessions_dir(base_dir)
-    filepath = os.path.join(dir_path, f"{session.id}.json")
-    with open(filepath, "w", encoding="utf-8") as f:
+    """Write the full session file atomically (a reader never sees a half-written file)."""
+    filepath = _session_file(base_dir, session.id)
+    tmp = f"{filepath}.tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
         json.dump(session.to_dict(), f, indent=2)
+    for attempt in range(5):
+        try:
+            os.replace(tmp, filepath)
+            break
+        except PermissionError:  # Windows: a reader has the file open for a moment
+            if attempt == 4:
+                raise
+            time.sleep(0.05)
     return filepath
 
 
@@ -157,21 +253,74 @@ def close_session(session: Session, base_dir: str) -> str:
     killed, machine crashed) still verifies, but is reported as ended abnormally.
     """
     with _lock(session):
+        if session.persistence is not None and session.persistence.timer is not None:
+            session.persistence.timer.cancel()
+            session.persistence.timer = None
         if session.signer is None or session.end_seal is not None:
-            return save_session(session, base_dir)
+            return _full_save(session, base_dir)
         end = add_checkpoint(session, "end")
-        save_session(session, base_dir)
+        _full_save(session, base_dir)
         if end is not None and session.integrity_hash is not None:
             session.end_seal = session.signer.seal(session.integrity_hash, end.signature)
         return _write(session, base_dir)
 
 
 def load_session(session_path: str) -> Session:
-    """Load a session from disk by path or ID."""
+    """Load a session from disk by path or ID, replaying any crash-journal records."""
     resolved = resolve_session_path(session_path)
     with open(resolved, encoding="utf-8") as f:
         data = json.load(f)
-    return Session.from_dict(data)
+    session = Session.from_dict(data)
+    _replay_journal(session, journal_path(resolved))
+    return session
+
+
+def _replay_journal(session: Session, path: str) -> None:
+    """Merge records the recorder journaled but never wrote in full (it stopped first).
+
+    Only signed sessions journal. Recovered records are verified like any other:
+    each still has to carry a valid forward-secure signature.
+    """
+    if session.signing is None or not os.path.exists(path):
+        return
+    have = {e.seq for e in session.events} | {c.seq for c in session.checkpoints}
+    recovered = 0
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            try:
+                item = json.loads(line)
+            except json.JSONDecodeError:
+                continue  # a line cut off by the crash
+            if "event" in item:
+                event = WatchEvent.from_dict(item["event"])
+                if event.seq not in have:
+                    session.events.append(event)
+                    have.add(event.seq)
+                    recovered += 1
+            elif "checkpoint" in item:
+                checkpoint = Checkpoint.from_dict(item["checkpoint"])
+                if checkpoint.seq not in have:
+                    session.checkpoints.append(checkpoint)
+                    have.add(checkpoint.seq)
+                    recovered += 1
+    if recovered:
+        session.recovered_records = recovered
+        session.summary = SessionSummary()
+        for event in session.events:
+            session.summary.total_events += 1
+            level = event.risk.value
+            if level == "safe":
+                session.summary.safe += 1
+            elif level == "caution":
+                session.summary.caution += 1
+            elif level == "danger":
+                session.summary.danger += 1
+        session.summary.risk_score = calculate_risk_score(
+            session.summary.safe, session.summary.caution, session.summary.danger
+        )
+        # The unkeyed session hash was never written for these records; the per-record
+        # signatures are what prove them, so recompute it rather than report a false alarm.
+        session.integrity_hash = compute_session_hash(session)
 
 
 def resolve_session_path(input_path: str) -> str:

@@ -2,6 +2,15 @@
 
 All notable changes to Unworldly are documented here.
 
+## [0.8.2] - 2026-11-25
+
+### Changed
+- **Long sessions no longer slow down.** The whole session file used to be rewritten after every event, so the cost grew with the session (2,000 events took ~38 s of CPU). Signed sessions are now rewritten in full at most once a second; records in between go straight to a small append-only crash journal (`<id>.journal.jsonl`). 2,000 events now take ~2.3 s.
+- The session file is written atomically (temp file + rename), so a reader never sees a half-written file.
+
+### Added
+- **Crash recovery.** If the recorder stops before its last full save, `load_session` replays the journal. Recovered records must still carry valid forward-secure signatures, so a forged journal line is reported as TAMPERED; `verify` notes how many records were recovered.
+
 ## [0.8.1] - 2026-11-25
 
 ### Fixed

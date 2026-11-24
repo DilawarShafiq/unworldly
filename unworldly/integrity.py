@@ -234,6 +234,12 @@ def _verify_signed(session: Session, result: VerifyResult) -> None:
             ):
                 errors.append("End seal invalid -- the session was changed after it was closed")
 
+    if session.recovered_records:
+        result.gaps.append(
+            f"{session.recovered_records} record(s) recovered from the crash journal "
+            "(the recorder stopped before its last full save)"
+        )
+
     # Recording gaps: time between consecutive records longer than 2x the heartbeat.
     heartbeat = hdr.get("heartbeatSeconds")
     if heartbeat:

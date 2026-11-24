@@ -252,6 +252,8 @@ class Session:
     checkpoints: list[Checkpoint] = field(default_factory=list)
     end_seal: dict[str, Any] | None = None  # identity-signed seal, written at clean shutdown
     signer: Any = field(default=None, repr=False, compare=False)  # in-memory only, never saved
+    persistence: Any = field(default=None, repr=False, compare=False)  # in-memory save state
+    recovered_records: int = field(default=0, repr=False, compare=False)  # replayed from crash journal
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
