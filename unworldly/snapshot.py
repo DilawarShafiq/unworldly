@@ -11,7 +11,6 @@ import os
 import subprocess
 from datetime import datetime, timezone
 
-
 _SNAPSHOT_DIR = ".unworldly"
 _BEFORE_FILE = "snapshot-before.json"
 _AFTER_FILE = "snapshot-after.json"

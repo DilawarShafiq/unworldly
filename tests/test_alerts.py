@@ -6,9 +6,7 @@ import json
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Thread
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from unworldly.alerts import _webhook, fire_alert
 from unworldly.types import EventType, RiskLevel, Session, SessionSummary, WatchEvent

@@ -55,5 +55,6 @@ class TestInterceptor:
         MCPProxyInterceptor(rec).observe(
             {"method": "tools/call", "params": {"name": "auth", "arguments": {"token": "SUPERSECRET"}}}
         )
-        raw = open(rec.close(), encoding="utf-8").read()
+        with open(rec.close(), encoding="utf-8") as f:
+            raw = f.read()
         assert "SUPERSECRET" not in raw

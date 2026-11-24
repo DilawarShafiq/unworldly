@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import io
-import sys
 from datetime import datetime, timezone
 
 import pytest
 
-from unworldly.diff import _file_events, _commands
+from unworldly.diff import _commands, _file_events
 from unworldly.types import EventType, RiskLevel, Session, SessionSummary, WatchEvent
 
 
@@ -60,8 +58,10 @@ def test_commands_returns_command_paths() -> None:
 
 
 def test_diff_command_runs_without_error(tmp_path: object, capsys: pytest.CaptureFixture[str]) -> None:
+    import json
+    import os
+
     from unworldly.diff import diff_command
-    import json, os
 
     sessions_dir = str(tmp_path) + "/.unworldly/sessions"
     os.makedirs(sessions_dir, exist_ok=True)

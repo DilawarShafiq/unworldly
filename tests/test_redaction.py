@@ -1,7 +1,6 @@
 """Tests for sensitive-argument redaction in the trace recorder (privacy NFR)."""
 
 from unworldly.agent_trace import REDACTED, AgentTraceRecorder, redact_params
-from unworldly.session import load_session
 from unworldly.types import RiskLevel
 
 
@@ -42,7 +41,8 @@ class TestRecorderRedaction:
         with AgentTraceRecorder(directory=str(tmp_path), agent_name="a") as rec:
             rec.record_tool_call("http.post", {"url": "https://x.io", "api_key": "SUPERSECRET"})
             path = rec.session_path
-        raw = (open(path, encoding="utf-8").read())
+        with open(path, encoding="utf-8") as f:
+            raw = f.read()
         assert "SUPERSECRET" not in raw
         assert REDACTED in raw
 
@@ -56,4 +56,5 @@ class TestRecorderRedaction:
         with AgentTraceRecorder(directory=str(tmp_path), redact=False) as rec:
             rec.record_tool_call("cfg", {"password": "keepme"})
             path = rec.session_path
-        assert "keepme" in open(path, encoding="utf-8").read()
+        with open(path, encoding="utf-8") as f:
+            assert "keepme" in f.read()

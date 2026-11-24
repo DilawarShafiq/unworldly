@@ -7,8 +7,6 @@ appear natively in the GitHub Security tab alongside CodeQL results.
 from __future__ import annotations
 
 import json
-import os
-from datetime import datetime
 
 from ._version import __version__
 from .session import load_session
@@ -35,7 +33,9 @@ _RULES = [
         "id": "UW002",
         "name": "DangerousCommandExecuted",
         "shortDescription": {"text": "Dangerous shell command executed"},
-        "fullDescription": {"text": "An AI agent ran a shell command classified as dangerous (e.g. rm -rf, sudo, curl)."},
+        "fullDescription": {
+            "text": "An AI agent ran a shell command classified as dangerous (e.g. rm -rf, sudo, curl)."
+        },
         "defaultConfiguration": {"level": "error"},
         "helpUri": "https://github.com/DilawarShafiq/unworldly#risk-levels",
     },
@@ -43,7 +43,9 @@ _RULES = [
         "id": "UW003",
         "name": "SensitiveFileModified",
         "shortDescription": {"text": "Sensitive configuration file modified"},
-        "fullDescription": {"text": "An AI agent modified a sensitive config file (e.g. package.json, Dockerfile, CI/CD config)."},
+        "fullDescription": {
+            "text": "An AI agent modified a sensitive config file (e.g. package.json, Dockerfile, CI/CD config)."
+        },
         "defaultConfiguration": {"level": "warning"},
         "helpUri": "https://github.com/DilawarShafiq/unworldly#risk-levels",
     },
@@ -51,7 +53,9 @@ _RULES = [
         "id": "UW004",
         "name": "CautionCommandExecuted",
         "shortDescription": {"text": "Caution-level command executed"},
-        "fullDescription": {"text": "An AI agent ran a command that warrants review (e.g. npm install, git push, docker run)."},
+        "fullDescription": {
+            "text": "An AI agent ran a command that warrants review (e.g. npm install, git push, docker run)."
+        },
         "defaultConfiguration": {"level": "warning"},
         "helpUri": "https://github.com/DilawarShafiq/unworldly#risk-levels",
     },
@@ -68,7 +72,6 @@ _RULES = [
 
 def _pick_rule(event_type: str, risk: RiskLevel, reason: str | None) -> str:
     """Select the best matching rule ID for an event."""
-    reason_lower = (reason or "").lower()
     if event_type == "command":
         return "UW002" if risk == RiskLevel.DANGER else "UW004"
     if risk == RiskLevel.DANGER:
@@ -91,11 +94,8 @@ def _to_sarif(session: Session) -> dict:  # type: ignore[type-arg]
         level = _LEVEL[event.risk]
 
         # Build location — file events have a real path, commands get a virtual URI
-        if event.type.value == "command":
-            uri = "agent://command"
-        else:
-            # Make path relative and use forward slashes for SARIF
-            uri = event.path.replace("\\", "/")
+        # (forward slashes for SARIF)
+        uri = "agent://command" if event.type.value == "command" else event.path.replace("\\", "/")
 
         message_text = event.reason or f"{event.type.value.upper()} — {event.path}"
 
@@ -182,5 +182,8 @@ def export_sarif(session_path: str, output: str | None = None) -> None:
 
     findings = len(sarif["runs"][0]["results"])
     print(f"\n  {green}✓ SARIF exported:{reset} {out_path}")
-    print(f"  {white_bold}{findings}{reset} findings ({session.summary.danger} error, {session.summary.caution} warning)")
+    print(
+        f"  {white_bold}{findings}{reset} findings "
+        f"({session.summary.danger} error, {session.summary.caution} warning)"
+    )
     print(f"  {gray}Upload to GitHub: gh code-scanning upload-results --sarif {out_path}{reset}\n")

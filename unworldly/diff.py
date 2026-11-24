@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-
 from .session import load_session
 from .types import RiskLevel, Session, WatchEvent
 
@@ -84,7 +82,11 @@ def diff_command(session_a_path: str, session_b_path: str) -> None:
         return max(evts, key=lambda e: _risk_order[e.risk]).risk
 
     def _risk_icon(r: RiskLevel) -> str:
-        return {RiskLevel.DANGER: f"{red_bold}🚨{reset}", RiskLevel.CAUTION: f"{yellow}⚠️ {reset}", RiskLevel.SAFE: f"{green}✅{reset}"}[r]
+        return {
+            RiskLevel.DANGER: f"{red_bold}🚨{reset}",
+            RiskLevel.CAUTION: f"{yellow}⚠️ {reset}",
+            RiskLevel.SAFE: f"{green}✅{reset}",
+        }[r]
 
     print(f"  {white_bold}File Changes{reset}  {gray}({len(all_paths)} total paths){reset}")
 

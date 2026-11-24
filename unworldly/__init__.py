@@ -5,18 +5,8 @@ commands -- replays sessions like a DVR, flags dangerous behavior in
 real-time, and produces tamper-proof, ISO 42001-compliant audit trails.
 """
 
+from ._version import __version__
 from .agent_detect import detect_agent
-from .command_monitor import CommandMonitor, create_command_monitor
-from .command_risk import CommandRiskConfig, CommandRiskResult, assess_command_risk
-from .config import MonitorConfig, load_config
-from .hipaa_risk import assess_hipaa_command_risk, assess_hipaa_file_risk
-from .integrity import VerifyResult, compute_session_hash, genesis_hash, hash_event, verify_session
-from .diff import diff_command
-from .owasp import map_session as owasp_map_session
-from .replay import replay
-from .report import report
-from .sarif import export_sarif
-from .snapshot import snapshot_before, snapshot_after
 from .agent_trace import (
     AgentTraceRecorder,
     MCPCaptureProxy,
@@ -24,9 +14,20 @@ from .agent_trace import (
     redact_params,
     trace_tool,
 )
+from .command_monitor import CommandMonitor, create_command_monitor
+from .command_risk import CommandRiskConfig, CommandRiskResult, assess_command_risk
+from .config import MonitorConfig, load_config
+from .diff import diff_command
+from .hipaa_risk import assess_hipaa_command_risk, assess_hipaa_file_risk
+from .integrity import VerifyResult, compute_session_hash, genesis_hash, hash_event, verify_session
 from .mcp_proxy import MCPProxyInterceptor, parse_message, run_stdio_proxy
-from .otel_ingest import ingest_file as otel_ingest_file
 from .otel_ingest import extract_usage, span_to_event, spans_to_session
+from .otel_ingest import ingest_file as otel_ingest_file
+from .owasp import map_session as owasp_map_session
+from .replay import replay
+from .report import report
+from .risk import assess_risk, calculate_risk_score, should_ignore
+from .sarif import export_sarif
 from .shell_hook import (
     ShellHookMonitor,
     create_shell_hook_monitor,
@@ -34,7 +35,7 @@ from .shell_hook import (
     parse_hook_line,
     uninstall_hook,
 )
-from .risk import assess_risk, calculate_risk_score, should_ignore
+from .snapshot import snapshot_after, snapshot_before
 from .types import (
     AgentInfo,
     CommandInfo,
@@ -45,8 +46,6 @@ from .types import (
     WatchEvent,
 )
 from .watcher import watch
-
-from ._version import __version__
 
 __all__ = [
     "__version__",

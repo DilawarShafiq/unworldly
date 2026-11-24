@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from unworldly.owasp import OWASP_RULES, map_session, owasp_terminal_report, owasp_markdown_section
+from unworldly.owasp import OWASP_RULES, map_session, owasp_markdown_section, owasp_terminal_report
 from unworldly.types import EventType, RiskLevel, Session, SessionSummary, WatchEvent
 
 

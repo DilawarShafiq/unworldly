@@ -20,7 +20,6 @@ from .integrity import verify_session
 from .session import load_session
 from .types import EventType, RiskLevel, Session
 
-
 # ── Sparkline ────────────────────────────────────────────────────────────────
 
 _SPARK = "▁▂▃▄▅▆▇█"
@@ -173,7 +172,7 @@ def list_command(
         print(f"{gray}  No sessions match the given filters.{reset}\n")
         return
 
-    for filepath, session in sessions:
+    for _filepath, session in sessions:
         if session.summary.risk_score >= 7:
             risk_color = red
         elif session.summary.risk_score >= 4:

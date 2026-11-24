@@ -161,7 +161,9 @@ def verify(session: str | None) -> None:
 # ── list / ls ─────────────────────────────────────────────────────────────────
 
 @cli.command(name="list")
-@click.option("--risk", type=click.Choice(["safe", "caution", "danger"]), default=None, help="Filter by max risk level.")
+@click.option(
+    "--risk", type=click.Choice(["safe", "caution", "danger"]), default=None, help="Filter by max risk level."
+)
 @click.option("--agent", default=None, help="Filter by agent name (partial match).")
 @click.option("--since", default=None, help="Filter by recency: 30m, 2h, 7d.")
 @click.option("--tag", default=None, help="Filter by session tag.")
@@ -231,7 +233,7 @@ def snapshot(mode: str, directory: str) -> None:
     Run `unworldly snapshot before` before starting your agent,
     then `unworldly snapshot after` when it finishes.
     """
-    from .snapshot import snapshot_before, snapshot_after
+    from .snapshot import snapshot_after, snapshot_before
     if mode == "before":
         snapshot_before(directory)
     else:
@@ -243,7 +245,9 @@ def snapshot(mode: str, directory: str) -> None:
 @cli.command()
 @click.argument("session", required=False)
 @click.option("-o", "--output", default=None, help="Save review decisions to this JSON file.")
-@click.option("--all", "show_all", is_flag=True, default=False, help="Review safe events too (default: danger+caution only).")
+@click.option(
+    "--all", "show_all", is_flag=True, default=False, help="Review safe events too (default: danger+caution only)."
+)
 def review(session: str | None, output: str | None, show_all: bool) -> None:
     """Interactively review session events — approve, flag, or skip each one."""
     session_path = session or get_latest_session(os.getcwd())

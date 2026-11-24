@@ -15,8 +15,7 @@ from typing import Any
 
 from .display import banner, format_event
 from .session import load_session
-from .types import EventType, RiskLevel, WatchEvent
-
+from .types import RiskLevel
 
 # ── Cross-platform single-char read ──────────────────────────────────────────
 
