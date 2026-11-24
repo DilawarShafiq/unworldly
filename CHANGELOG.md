@@ -2,15 +2,22 @@
 
 All notable changes to Unworldly are documented here.
 
-## [0.6.0] - 2026-07-24
+## [0.6.0] - 2026-11-25
 
 ### Added
 - **Lossless command capture (shell hook)**: `unworldly hook install` adds a `preexec` hook (bash/zsh/pwsh) that records every command *before it runs*, fixing the ~89% miss rate of the 500ms poller. New `unworldly watch --capture poll|hook|both` and `unworldly hook install|uninstall|status|print`.
 - **Agent decision-trail capture (SDK/custom agents)**: `AgentTraceRecorder` + `@trace_tool` decorator record an agent's in-process tool calls into the same sealed, hash-chained session as file/command events — for OpenAI Agents SDK, Google ADK, LangGraph, and custom loops. `assess_tool_risk` heuristic (network/egress, deletes, credential access → danger) with explicit `risk=` override.
 - **MCP capture**: `MCPCaptureProxy` wraps an MCP `ClientSession`, logging every `call_tool` then forwarding it unchanged.
 - **Capture provenance**: `Session.capture_source` records which capture layer produced a log (honesty/completeness contract).
-- **New modules**: `shell_hook.py`, `agent_trace.py`, `_version.py`. SDD spec `specs/agent-instrumentation/spec.md` (capture layers L1–L4).
-- 44+ new tests (shell hook, agent trace, version-consistency guard).
+- **`unworldly doctor`**: per-machine diagnostics showing which capture layers work here — and what they will NOT see (prompts/reasoning, unwrapped SDK calls, cloud/no-code agents).
+- **Capture coverage in reports**: every markdown and terminal report states its capture scope and its blind spots, so a sealed log is never mistaken for a complete one. SARIF exports carry the same provenance (`unworldly/captureSource`, `unworldly/captureCoverage`) into the GitHub Security tab.
+- **Secret redaction**: tool-call arguments are scrubbed (password/token/api_key-style keys, emails, bearer tokens, high-entropy blobs) before they hit disk. Risk is scored on the original values first. On by default; `AgentTraceRecorder(redact=False)` opts out.
+- **OpenTelemetry GenAI ingestion**: `unworldly collect <spans.json>` maps `gen_ai.*` spans into sealed, hash-chained sessions — reaching SDK, no-code and cloud agents that export OTel. No OTel SDK dependency.
+- **Token usage**: input/output tokens from `gen_ai.usage.*` spans are aggregated onto `Session.usage` and shown in reports.
+- **`unworldly mcp-proxy`**: sits between an agent and its stdio MCP server; every `tools/call` is recorded with risk scoring and secret redaction, then forwarded unchanged — zero agent changes.
+- **SDK agent auto-detection**: identifies the agent framework actually in use (OpenAI Agents SDK, Google ADK, LangGraph, CrewAI, …) and labels the session.
+- **New modules**: `shell_hook.py`, `agent_trace.py`, `_version.py`, `mcp_proxy.py`, `otel_ingest.py`, `doctor.py`.
+- 310 tests in total (shell hook, agent trace, redaction, OTel, MCP proxy, doctor, version-consistency guard).
 
 ### Changed
 - **Honest positioning**: README repositioned as "the black box for AI **coding agents**"; added a "What it captures — and what it can't see" coverage table; dropped the "any AI agent" overclaim.
