@@ -25,6 +25,7 @@ from watchdog.events import (
 from watchdog.observers import Observer
 
 from .agent_detect import detect_agent, detect_model, find_agent_roots
+from .agent_trace import redact_command
 from .canary import canary_files, canary_values, used_in
 from .command_monitor import create_command_monitor
 from .command_risk import assess_command_risk
@@ -431,6 +432,10 @@ def watch(
         if command_canaries and used_in(command_str, command_canaries):
             level, reason = RiskLevel.DANGER, "Canary credential used in a command"
         else:
+            # A credential file may have been written a moment ago and not yet delivered
+            # by the file watcher: refresh before checking, so it is still recognised.
+            if credentials.refresh():
+                record_credential_index(session, credentials.summary())
             by_value = credentials.used_values(command_str)
             by_name = [c for c in credentials.referenced_names(command_str) if c not in by_value]
             if by_value:
@@ -440,10 +445,10 @@ def watch(
                 if level != RiskLevel.DANGER:
                     level, reason = ref_level, ref_reason
 
-        if used_refs or len(credentials):
-            # Never store a raw credential value: replace each with its name.
-            command_str = credentials.redact(command_str)
-            cmd.args = [credentials.redact(a) for a in cmd.args]
+        # Never store a raw secret: indexed credentials become their name, and known key
+        # formats, bearer tokens and `token=...` assignments are redacted as well.
+        command_str = redact_command(credentials.redact(command_str))
+        cmd.args = [redact_command(credentials.redact(a)) for a in cmd.args]
         watch_event = WatchEvent(
             timestamp=now.isoformat(),
             type=EventType.COMMAND,

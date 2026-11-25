@@ -125,6 +125,18 @@ def find_secret(text: str) -> str | None:
     return None
 
 
+def redact_command(text: str) -> str:
+    """Redact secrets from a command line: known key formats, bearer tokens, `token=…` assignments.
+
+    Narrower than :func:`redact_text` (no blanket removal of long strings or emails), so
+    commands stay useful as evidence while an inline secret is never stored.
+    """
+    for _kind, pattern in SECRET_PATTERNS:
+        text = pattern.sub(REDACTED, text)
+    text = _BEARER.sub(f"Bearer {REDACTED}", text)
+    return _ASSIGNMENT.sub(lambda m: f"{m.group(1)}{m.group(2)}{REDACTED}", text)
+
+
 def redact_text(text: str) -> str:
     """Redact secrets from free text such as a file diff: known key formats, assignments, tokens, emails, blobs."""
     for _kind, pattern in SECRET_PATTERNS:

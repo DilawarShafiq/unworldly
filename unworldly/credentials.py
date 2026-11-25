@@ -14,6 +14,7 @@ var) without the value or name appearing in its command line can't be seen.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import hmac
 import os
@@ -114,6 +115,7 @@ class CredentialIndex:
         self.salt = salt or secrets.token_hex(16)
         self._by_value: dict[str, Credential] = {}
         self._names: dict[str, Credential] = {}
+        self._mtimes: dict[str, float] = {}  # indexed project file -> mtime when read
 
     # -- building -----------------------------------------------------------------
 
@@ -124,9 +126,39 @@ class CredentialIndex:
 
     def index_file(self, rel: str) -> None:
         """(Re-)index one project file (call when a credential file changes)."""
-        text = _read(os.path.join(self.project, rel))
+        path = os.path.join(self.project, rel)
+        text = _read(path)
         if text is not None:
             self.add_text(text, rel.replace(os.sep, "/"))
+            with contextlib.suppress(OSError):
+                self._mtimes[rel] = os.path.getmtime(path)
+
+    def refresh(self) -> bool:
+        """Cheaply pick up credential files created or changed since they were indexed.
+
+        Called before each command is checked, so a credential written and used straight
+        away is still recognised (the file watcher may not have delivered its event yet).
+        Re-reads known credential files whose mtime changed, and looks for new credential
+        files at the project root, where `.env` files live. Returns True if anything new
+        was indexed.
+        """
+        before = len(self._by_value)
+        candidates = set(self._mtimes)
+        try:
+            with os.scandir(self.project) as entries:
+                for entry in entries:
+                    if entry.is_file() and _is_credential_file(entry.name):
+                        candidates.add(entry.name)
+        except OSError:
+            pass
+        for rel in candidates:
+            try:
+                mtime = os.path.getmtime(os.path.join(self.project, rel))
+            except OSError:
+                continue
+            if self._mtimes.get(rel) != mtime:
+                self.index_file(rel)
+        return len(self._by_value) != before
 
     def build(self) -> CredentialIndex:
         scanned = 0

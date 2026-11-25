@@ -232,3 +232,47 @@ def test_production_is_called_out() -> None:
         ),
     )
     assert "PRODUCTION" in find_flags(session)[0].message
+
+
+class TestRaceAndInlineSecrets:
+    """Regression (found by CI on Windows before release): never store a raw secret in a command."""
+
+    def test_refresh_picks_up_a_new_env_before_the_file_event_arrives(self, tmp_path: Path) -> None:
+        index = CredentialIndex(str(tmp_path), home=str(tmp_path / "nohome")).build()
+        assert len(index) == 0
+        (tmp_path / ".env").write_text(f"DEPLOY_TOKEN={TOKEN}\n", encoding="utf-8")  # no watcher event delivered
+        assert index.refresh() is True
+        assert index.redact(f"deploy --token {TOKEN}") == "deploy --token ***DEPLOY_TOKEN***"
+
+    def test_refresh_picks_up_a_changed_credential_file(self, tmp_path: Path) -> None:
+        import os
+        import time
+
+        env = tmp_path / ".env"
+        env.write_text("A_TOKEN=first_value_123456\n", encoding="utf-8")
+        index = CredentialIndex(str(tmp_path), home=str(tmp_path / "nohome")).build()
+        env.write_text("A_TOKEN=first_value_123456\nB_TOKEN=second_value_654321\n", encoding="utf-8")
+        future = time.time() + 5
+        os.utime(env, (future, future))
+        assert index.refresh() is True and index.used_values("x second_value_654321")
+
+    def test_refresh_is_a_no_op_when_nothing_changed(self, tmp_path: Path) -> None:
+        index = CredentialIndex(str(_project(tmp_path)), home=str(tmp_path / "nohome")).build()
+        assert index.refresh() is False
+
+    def test_inline_secrets_in_commands_are_redacted(self) -> None:
+        from unworldly.agent_trace import redact_command
+
+        cmd = (
+            'curl -H "Authorization: Bearer abc.def.ghi" https://x.io --data token=s3cr3tvalue123 AKIAIOSFODNN7EXAMPLA'
+        )
+        out = redact_command(cmd)
+        for secret in ("abc.def.ghi", "s3cr3tvalue123", "AKIAIOSFODNN7EXAMPLA"):
+            assert secret not in out
+        assert "curl" in out and "https://x.io" in out  # still useful evidence
+
+    def test_ordinary_commands_are_untouched(self) -> None:
+        from unworldly.agent_trace import redact_command
+
+        cmd = "git checkout 4b825dc642cb6eb9a060e54bf8d69288fbee4904 && npm test -- --coverage"
+        assert redact_command(cmd) == cmd
