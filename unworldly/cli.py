@@ -21,7 +21,8 @@ from .watcher import watch
 def cli() -> None:
     """The flight recorder for AI agents.
 
-    Record, replay, and audit everything AI agents do on your system.
+    Forensic readiness for AI agents: record, replay and audit what they do,
+    with signed, tamper-resistant sessions.
     """
     pass
 

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "unworldly-recorder"
 dynamic = ["version"]
-description = "The flight recorder for AI agents. Record, replay, and audit everything AI agents do on your system."
+description = "Forensic readiness for AI agents: record, replay and audit what AI agents do, with credential lineage, chain of custody and signed, tamper-resistant sessions."
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
@@ -13,8 +13,9 @@ authors = [
     {name = "Muhammad Dilawar Shafiq (Dilawar Gopang)", email = "dilawar.gopang@gmail.com"},
 ]
 keywords = [
-    "ai", "agents", "security", "monitoring", "audit",
-    "flight-recorder", "black-box", "devtools", "cli",
+    "ai", "ai-agents", "agent-security", "ai-governance", "audit-trail",
+    "forensics", "incident-response", "credential-lineage", "tamper-resistant",
+    "flight-recorder", "claude-code", "mcp", "opentelemetry", "devtools", "cli",
     "ai-safety", "cybersecurity",
 ]
 classifiers = [

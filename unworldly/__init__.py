@@ -1,8 +1,9 @@
-"""Unworldly — The Flight Recorder for AI Agents.
+"""Unworldly — forensic readiness for AI agents.
 
-Records everything AI agents do on your system -- file changes AND shell
-commands -- replays sessions like a DVR, flags dangerous behavior in
-real-time, and produces tamper-evident audit trails (ISO 42001 / SOC 2 evidence).
+Records what AI agents do on your system -- file changes, shell commands and
+tool calls -- replays sessions like a DVR, flags risky behaviour in real time,
+traces which credentials were used, and seals everything into signed,
+tamper-resistant sessions (audit evidence for ISO 42001 / SOC 2 / HIPAA).
 """
 
 from ._version import __version__
