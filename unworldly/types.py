@@ -79,6 +79,7 @@ class WatchEvent:
     before_hash: str | None = None
     after_hash: str | None = None
     diff: str | None = None
+    credentials: list[str] | None = None  # "source#NAME" refs of credentials this event used
     # Forward-secure signature fields (signed sessions only; see signing.py)
     seq: int | None = None
     signature: str | None = None
@@ -101,6 +102,8 @@ class WatchEvent:
             result["afterHash"] = self.after_hash
         if self.diff is not None:
             result["diff"] = self.diff
+        if self.credentials is not None:
+            result["credentials"] = self.credentials
         if self.hash is not None:
             result["hash"] = self.hash
         if self.seq is not None:
@@ -125,6 +128,7 @@ class WatchEvent:
             before_hash=data.get("beforeHash"),
             after_hash=data.get("afterHash"),
             diff=data.get("diff"),
+            credentials=data.get("credentials"),
             seq=data.get("seq"),
             signature=data.get("signature"),
             next_public_key=data.get("nextPublicKey"),
@@ -139,15 +143,16 @@ class Checkpoint:
     shares the session's signed sequence (``seq``) with the events.
     """
 
-    kind: str  # "heartbeat" | "end"
+    kind: str  # "heartbeat" | "end" | "custody" | "credentials"
     timestamp: str
     seq: int
     digest: str
     signature: str
     next_public_key: str
+    data: dict[str, Any] | None = None  # signed payload for custody / credential index
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result: dict[str, Any] = {
             "kind": self.kind,
             "timestamp": self.timestamp,
             "seq": self.seq,
@@ -155,6 +160,9 @@ class Checkpoint:
             "signature": self.signature,
             "nextPublicKey": self.next_public_key,
         }
+        if self.data is not None:
+            result["data"] = self.data
+        return result
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Checkpoint:
@@ -165,6 +173,7 @@ class Checkpoint:
             digest=data["digest"],
             signature=data["signature"],
             next_public_key=data["nextPublicKey"],
+            data=data.get("data"),
         )
 
 
@@ -251,6 +260,8 @@ class Session:
     signing: dict[str, Any] | None = None  # signed-session header (scheme, pk0, identity…)
     checkpoints: list[Checkpoint] = field(default_factory=list)
     end_seal: dict[str, Any] | None = None  # identity-signed seal, written at clean shutdown
+    custody: dict[str, Any] | None = None  # who/where/under whose authority (also a signed checkpoint)
+    credential_index: dict[str, Any] | None = None  # salt + fingerprints, never values (also signed)
     signer: Any = field(default=None, repr=False, compare=False)  # in-memory only, never saved
     persistence: Any = field(default=None, repr=False, compare=False)  # in-memory save state
     recovered_records: int = field(default=0, repr=False, compare=False)  # replayed from crash journal
@@ -280,6 +291,10 @@ class Session:
             result["checkpoints"] = [c.to_dict() for c in self.checkpoints]
         if self.end_seal is not None:
             result["endSeal"] = self.end_seal
+        if self.custody is not None:
+            result["custody"] = self.custody
+        if self.credential_index is not None:
+            result["credentialIndex"] = self.credential_index
         return result
 
     @classmethod
@@ -303,4 +318,6 @@ class Session:
             signing=data.get("signing"),
             checkpoints=[Checkpoint.from_dict(c) for c in data.get("checkpoints", [])],
             end_seal=data.get("endSeal"),
+            custody=data.get("custody"),
+            credential_index=data.get("credentialIndex"),
         )

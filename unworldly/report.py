@@ -88,6 +88,10 @@ def _generate_markdown(session: Session) -> str:
             agent_row += f"| Agent Version | {session.agent.version} |\n"
 
     capture_label, capture_note = capture_coverage(session.capture_source)
+    from .custody import describe_custody
+
+    custody_rows = "".join(f"| {label} | {value} |\n" for label, value in describe_custody(session.custody))
+    agent_row += custody_rows
 
     integrity_issues = ""
     if integrity.errors:
@@ -201,6 +205,21 @@ def _generate_markdown(session: Session) -> str:
             md += f"| {level} | {f.kind} | {f.message.replace('|', '/')} | {where} |\n"
         md += "\n"
 
+    used = [(n, e) for n, e in enumerate(events, start=1) if e.credentials]
+    indexed = (session.credential_index or {}).get("credentials", [])
+    if indexed or used:
+        md += "## Credential Lineage\n\n"
+        md += f"> {len(indexed)} credential(s) indexed at session start (fingerprints only, never values).\n\n"
+        if used:
+            md += "| Event | Credential | Source | Action |\n|-------|------------|--------|--------|\n"
+            for n, e in used:
+                for ref in e.credentials or []:
+                    source, _, name = ref.rpartition("#")
+                    md += f"| #{n} | `{name}` | `{source}` | `{e.path[:80]}` |\n"
+            md += "\n"
+        else:
+            md += "No indexed credential was used in this session.\n\n"
+
     changed = [e for e in events if e.diff][:20]
     if changed:
         md += "## File Changes\n\n"
@@ -287,6 +306,10 @@ def report(
     print(f"  Recorded:  {gray}{start_str}{reset}")
     if session.agent:
         print(f"  Agent:     {cyan}{session.agent.name}{reset} {gray}({session.agent.detected_via}){reset}")
+    from .custody import describe_custody
+
+    for label, value in describe_custody(session.custody):
+        print(f"  {label + ':':<11}{gray}{value}{reset}")
     capture_label, capture_note = capture_coverage(session.capture_source)
     print(f"  Capture:   {white}{capture_label}{reset}")
     print(f"  {gray}Coverage:  {capture_note}{reset}")

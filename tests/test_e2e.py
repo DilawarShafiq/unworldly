@@ -29,6 +29,7 @@ ENV = {
     "UNWORLDLY_KEY_STORE": "file",
     "UNWORLDLY_HOME": tempfile.mkdtemp(prefix="unworldly-e2e-home-"),
 }
+E2E_TOKEN = "dpl_e2e_7c1f9a2b3d4e5f60"  # fake credential, 24 chars
 # A throwaway home folder, so "outside the project" watching never sees the real one.
 FAKE_HOME = Path(tempfile.mkdtemp(prefix="unworldly-e2e-userhome-"))
 (FAKE_HOME / ".ssh").mkdir()
@@ -88,7 +89,7 @@ def recorded(tmp_path_factory: pytest.TempPathFactory) -> Path:
         assert _wait_for(lambda: _session_file(project) is not None), "watch never created a session"
         time.sleep(1.5)  # let the file observer and process poller settle
 
-        (project / ".env").write_text("API_KEY=x\n", encoding="utf-8")
+        (project / ".env").write_text(f"DEPLOY_TOKEN={E2E_TOKEN}\n", encoding="utf-8")
         (project / "app.py").write_text("print('hi')\n", encoding="utf-8")
         (FAKE_HOME / ".ssh" / "authorized_keys").write_text("ssh-ed25519 AAAA e2e\n", encoding="utf-8")
 
@@ -105,7 +106,7 @@ def recorded(tmp_path_factory: pytest.TempPathFactory) -> Path:
         # command capture is broken outright, which is the regression this test guards.
         for _attempt in range(3):
             subprocess.run(
-                [sys.executable, "-c", "import time; time.sleep(2)  # unworldly-e2e-marker"],
+                [sys.executable, "-c", f"import time; time.sleep(2)  # unworldly-e2e-marker {E2E_TOKEN}"],
                 cwd=project,
                 check=True,
             )
@@ -216,3 +217,21 @@ def test_flags_command_runs_on_a_real_session(recorded: Path) -> None:
     assert result.returncode in (0, 1), result.stdout + result.stderr
     assert "Traceback" not in result.stderr
     assert _cli("flags", "--json", cwd=recorded).stdout.strip().startswith("[")
+
+
+def test_credential_lineage_traces_the_token_without_storing_it(recorded: Path) -> None:
+    session_file = _session_file(recorded)
+    assert session_file is not None
+    raw = session_file.read_text(encoding="utf-8")
+    assert E2E_TOKEN not in raw, "a raw credential value was written to disk"
+    marker = [e for e in _events(recorded) if "unworldly-e2e-marker" in e["path"]]
+    assert marker and ".env#DEPLOY_TOKEN" in marker[0].get("credentials", [])
+    assert "***DEPLOY_TOKEN***" in marker[0]["path"]
+
+
+def test_custody_is_recorded_and_signed(recorded: Path) -> None:
+    session_file = _session_file(recorded)
+    assert session_file is not None
+    data = json.loads(session_file.read_text(encoding="utf-8"))
+    assert data["custody"]["osUser"] and data["custody"]["capture"] == "poll"
+    assert any(c["kind"] == "custody" for c in data["checkpoints"])

@@ -298,6 +298,40 @@ def flags(session: str | None, as_json: bool) -> None:
     sys.exit(1 if any(f.level == RiskLevel.DANGER for f in findings) else 0)
 
 
+# ── credentials ───────────────────────────────────────────────────────────────
+
+
+@cli.command()
+@click.argument("session", required=False)
+def credentials(session: str | None) -> None:
+    """Credential lineage: which credentials were indexed, and which the agent used.
+
+    Shows sources, names and fingerprints only. Raw values are never stored.
+    """
+    session_path = session or get_latest_session(os.getcwd())
+    if not session_path:
+        click.echo("No sessions found. Run `unworldly watch` first.", err=True)
+        sys.exit(1)
+    data = load_session(session_path)
+    index = (data.credential_index or {}).get("credentials", [])
+    uses: dict[str, list[int]] = {}
+    for number, event in enumerate(data.events, start=1):
+        for ref in event.credentials or []:
+            uses.setdefault(ref, []).append(number)
+    gray, red, reset = "\033[90m", "\033[1;31m", "\033[0m"
+    click.echo("")
+    if not index:
+        click.echo(f"  {gray}No credentials were indexed for this session.{reset}\n")
+        return
+    click.echo(f"  {len(index)} credential(s) indexed, {len(uses)} used\n")
+    for cred in index:
+        ref = f"{cred['source']}#{cred['name']}"
+        used = uses.get(ref)
+        mark = f"{red}USED by event(s) {', '.join(f'#{n}' for n in used)}{reset}" if used else f"{gray}not used{reset}"
+        click.echo(f"  {cred['name']:<28} {gray}{cred['source']:<32} {cred['fingerprint']}{reset}  {mark}")
+    click.echo("")
+
+
 # ── canary ────────────────────────────────────────────────────────────────────
 
 

@@ -8,6 +8,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
 
+**Forensic readiness for AI agents.** When an agent incident happens, you can prove exactly what it did, with which credentials, under whose authority, in a record nobody can quietly alter.
+
 **The black box for AI agents.** Records what your agents *do* — the file changes and shell commands of local coding agents automatically, plus tool calls from SDK, MCP and OpenTelemetry agents — replays the session like a DVR, flags risky actions, and seals it into a signed, tamper-resistant audit trail you can use as ISO 42001 / SOC 2 evidence.
 
 > You wouldn't run code without logs. Why are you letting a coding agent edit your machine without a black box?
@@ -217,6 +219,20 @@ access → **danger**), and you can pass an explicit `risk=` to override.
 - **Report** — Generate terminal or markdown security reports with integrity verification
 - **Configurable** — Custom risk patterns via `.unworldly/config.json` allowlist/blocklist
 - **Cross-platform** — macOS, Linux, Windows. Runs anywhere Python runs
+
+## Forensic Readiness
+
+Every 2026 agent incident ended with the same questions, asked too late. Unworldly records the answers while the agent works.
+
+| Question | How Unworldly answers it |
+|----------|--------------------------|
+| **What exactly did it do?** | Every command, file change (with redacted diff) and tool call, in order: `replay`, `show`, `report` |
+| **With which credentials?** | **Credential lineage**: at session start Unworldly indexes credentials in your project (`.env`, key files…) and in `~/.aws/credentials`, `~/.npmrc`, `~/.pypirc`, `~/.netrc`, `~/.docker/config.json`, `~/.kube/config`. When a command, tool call or written file uses one, the event says which credential and where it came from: *"Credential `RAILWAY_TOKEN` from `.env` used in a command"*. Raw values are never written, only names and salted fingerprints, and any value that appears in a command is stored as `***RAILWAY_TOKEN***`. `unworldly credentials` lists what was indexed and used. |
+| **Which actions destroyed real infrastructure?** | **Blast-radius flags** for `terraform destroy`, `kubectl delete namespace`, `aws rds delete-db-instance`, `railway volume delete`, `DROP TABLE`, `prisma migrate reset`, `redis-cli flushall` and more, with production called out |
+| **Under whose authority?** | **Chain of custody**, signed at session start: OS user and machine, the process chain that started the recording, the project's git identity, CI provenance (who triggered the run, which workflow and commit), and the agent's identity and model |
+| **Can anyone quietly alter it?** | **Forward-secure signatures** on every record: editing, deleting or reordering anything already recorded makes `verify` report TAMPERED, even for someone who later steals the machine's keys |
+
+**Honest limits:** a tool that reads a credential by itself (from its own config or an environment variable) without the value or variable name appearing on its command line can't be attributed; capture coverage is stated in every report.
 
 ## Behaviour Flags
 

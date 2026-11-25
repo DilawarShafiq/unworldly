@@ -209,6 +209,9 @@ class AgentTraceRecorder:
         self.abs_dir = os.path.abspath(directory)
         self.redact = redact
         self._canaries = canary_values(self.abs_dir)
+        from .credentials import CredentialIndex
+
+        self._credentials = CredentialIndex(self.abs_dir).build()
         self.session: Session = create_session(self.abs_dir, tag=tag)
         self.session.capture_source = capture_source
         if agent_name:
@@ -220,6 +223,11 @@ class AgentTraceRecorder:
             detected = detect_sdk_agent()
             if detected is not None:
                 self.session.agent = detected
+        from .custody import collect_custody
+        from .session import record_credential_index, record_custody
+
+        record_custody(self.session, collect_custody(self.abs_dir, self.session.agent, capture_source))
+        record_credential_index(self.session, self._credentials.summary())
         ensure_sessions_dir(self.abs_dir)
         self.session_path: str = save_session(self.session, self.abs_dir)
 
@@ -240,11 +248,19 @@ class AgentTraceRecorder:
         if risk is None:
             risk, heuristic_reason = assess_tool_risk(tool, params)
             reason = reason or heuristic_reason
-        if self._canaries and used_in(f"{tool} {params!r}", self._canaries):
+        raw = f"{tool} {params!r}"
+        used_refs: list[str] | None = None
+        if self._canaries and used_in(raw, self._canaries):
             risk, reason = RiskLevel.DANGER, "Canary credential used in a tool call"
+        else:
+            from .credentials import describe_use
+
+            by_value = self._credentials.used_values(raw)
+            if by_value:
+                risk, reason, used_refs = describe_use("value", by_value, f"a tool call (`{tool}`)")
 
         stored_params = redact_params(params) if self.redact else params
-        preview = _preview(stored_params)
+        preview = self._credentials.redact(_preview(stored_params))
         command_str = f"{tool}({preview})" if preview else f"{tool}()"
         command = CommandInfo(
             executable=tool,
@@ -259,6 +275,7 @@ class AgentTraceRecorder:
             risk=risk,
             reason=reason,
             command=command,
+            credentials=used_refs,
         )
         add_event(self.session, event)
         self.session_path = save_session(self.session, self.abs_dir)

@@ -114,22 +114,40 @@ def _add_event_locked(session: Session, event: WatchEvent) -> None:
     )
 
 
-def checkpoint_digest(session_id: str, kind: str, timestamp: str) -> str:
-    payload = json.dumps({"session": session_id, "kind": kind, "timestamp": timestamp}, sort_keys=True)
+def checkpoint_digest(session_id: str, kind: str, timestamp: str, data: dict[str, Any] | None = None) -> str:
+    body: dict[str, Any] = {"session": session_id, "kind": kind, "timestamp": timestamp}
+    if data is not None:  # only when present, so older checkpoints still verify
+        body["data"] = data
+    payload = json.dumps(body, sort_keys=True)
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def add_checkpoint(session: Session, kind: str) -> Checkpoint | None:
-    """Append a signed checkpoint ("heartbeat" or "end"); no-op for unsigned sessions."""
+def add_checkpoint(session: Session, kind: str, data: dict[str, Any] | None = None) -> Checkpoint | None:
+    """Append a signed checkpoint; no-op for unsigned sessions.
+
+    Kinds: "heartbeat", "end", and "custody" / "credentials", which carry signed ``data``.
+    """
     if session.signer is None:
         return None
     with session.signer.lock:
         timestamp = datetime.now(timezone.utc).isoformat()
-        digest = checkpoint_digest(session.id, kind, timestamp)
+        digest = checkpoint_digest(session.id, kind, timestamp, data)
         seq, signature, next_pk = session.signer.sign(digest)
-        checkpoint = Checkpoint(kind, timestamp, seq, digest, signature, next_pk)
+        checkpoint = Checkpoint(kind, timestamp, seq, digest, signature, next_pk, data)
         session.checkpoints.append(checkpoint)
         return checkpoint
+
+
+def record_custody(session: Session, custody: dict[str, Any]) -> None:
+    """Store who/where/under whose authority the session ran, as a signed checkpoint."""
+    session.custody = custody
+    add_checkpoint(session, "custody", custody)
+
+
+def record_credential_index(session: Session, summary: dict[str, Any]) -> None:
+    """Store the credential index (salt + fingerprints only), as a signed checkpoint."""
+    session.credential_index = summary
+    add_checkpoint(session, "credentials", summary)
 
 
 # Signed sessions are rewritten in full at most this often; in between, new records

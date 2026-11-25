@@ -71,6 +71,63 @@ _GIT_RULES: list[tuple[re.Pattern[str], RiskLevel, str]] = [
 ]
 _GIT_ADD = re.compile(r"\bgit\s+add\b(.*)")
 
+# Production-destructive actions (blast radius), in command lines or tool-call arguments.
+_BLAST_RULES: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"\bterraform\s+(destroy\b|apply\b.*\s-destroy\b)"), "Terraform destroy"),
+    (re.compile(r"\b(pulumi|cdk)\s+destroy\b"), "Infrastructure stack destroy"),
+    (
+        re.compile(
+            r"\bkubectl\s+delete\s+(ns|namespaces?|deploy(ment)?s?|statefulsets?|sts|pvc|pv|persistentvolume\w*)\b|\bkubectl\s+delete\b.*\s--all\b"
+        ),
+        "Kubernetes resources deleted",
+    ),
+    (re.compile(r"\bhelm\s+(uninstall|delete)\b"), "Helm release removed"),
+    (re.compile(r"\baws\s+rds\s+delete-db-(instance|cluster)\b"), "AWS database deleted"),
+    (re.compile(r"\baws\s+s3\s+rb\b|\baws\s+s3\s+rm\b.*--recursive"), "AWS S3 data deleted"),
+    (re.compile(r"\baws\s+dynamodb\s+delete-table\b"), "AWS DynamoDB table deleted"),
+    (re.compile(r"\baws\s+ec2\s+terminate-instances\b"), "AWS instances terminated"),
+    (
+        re.compile(r"\baws\s+(cloudformation\s+delete-stack|eks\s+delete-cluster|lambda\s+delete-function)\b"),
+        "AWS resource deleted",
+    ),
+    (re.compile(r"\baws\s+iam\s+delete-"), "AWS IAM identity deleted"),
+    (
+        re.compile(
+            r"\bgcloud\b.*\b(sql\s+instances|projects|container\s+clusters|compute\s+instances|storage\s+buckets)\s+delete\b|\bgsutil\s+(rm\s+-r|rb)\b"
+        ),
+        "Google Cloud resource deleted",
+    ),
+    (
+        re.compile(r"\baz\s+group\s+delete\b|\baz\s+(sql|aks|storage|cosmosdb|postgres|mysql)\b.*\bdelete\b"),
+        "Azure resource deleted",
+    ),
+    (
+        re.compile(r"\brailway\s+(volume\s+delete|down|environment\s+delete|service\s+delete)\b"),
+        "Railway resource deleted",
+    ),
+    (re.compile(r"\b(fly|flyctl)\s+(apps\s+destroy|volumes?\s+destroy|destroy)\b"), "Fly.io resource destroyed"),
+    (re.compile(r"\bheroku\s+(apps:destroy|pg:reset)\b"), "Heroku app or database destroyed"),
+    (re.compile(r"\bvercel\s+(remove|rm)\b"), "Vercel deployment removed"),
+    (re.compile(r"\bsupabase\s+db\s+reset\b"), "Supabase database reset"),
+    (re.compile(r"(?i)\bdrop\s+(table|database|schema)\b"), "SQL DROP"),
+    (re.compile(r"(?i)\btruncate\s+(table\s+)?\w+"), "SQL TRUNCATE"),
+    (re.compile(r"(?i)\bdelete\s+from\s+[\w.\"`]+\s*(;|$|\"|')"), "SQL DELETE without WHERE"),
+    (re.compile(r"\bdropdb\b|\bredis-cli\b.*\bflush(all|db)\b|\bdropDatabase\s*\("), "Database wiped"),
+    (
+        re.compile(r"\bprisma\s+(migrate\s+reset|db\s+push\b.*--(force-reset|accept-data-loss))"),
+        "Prisma reset (data loss)",
+    ),
+    (
+        re.compile(r"\brails\s+db:(drop|reset)\b|\bmanage\.py\s+flush\b|\balembic\s+downgrade\s+base\b"),
+        "Database reset by migration tool",
+    ),
+    (
+        re.compile(r"\bdocker\s+system\s+prune\b.*(-a|--all).*--volumes|\bdocker\s+volume\s+(rm|prune)\b"),
+        "Docker volumes deleted",
+    ),
+]
+_PRODUCTION = re.compile(r"(?i)\bprod(uction)?\b")
+
 
 def _ts(event: WatchEvent) -> float:
     try:
@@ -229,6 +286,31 @@ class FlagEngine:
                 out,
             )
 
+        # Blast radius: production-destructive infrastructure / data actions
+        for pattern, label in _BLAST_RULES:
+            if pattern.search(cmd):
+                where = " on PRODUCTION" if _PRODUCTION.search(cmd) else ""
+                self._once(
+                    ("blast-radius", number),
+                    Finding("blast-radius", RiskLevel.DANGER, f"{label}{where}: `{_short(cmd)}`", [number]),
+                    out,
+                )
+                break
+
+        # Credential lineage: first use of each credential
+        for ref in event.credentials or []:
+            source, _, name = ref.rpartition("#")
+            self._once(
+                ("credential-use", ref),
+                Finding(
+                    "credential-use",
+                    event.risk if event.risk != RiskLevel.SAFE else RiskLevel.CAUTION,
+                    f"Credential `{name}` from `{source}` used: `{_short(cmd)}`",
+                    [number],
+                ),
+                out,
+            )
+
         # F6: flailing — the same command repeated
         normalised = " ".join(cmd.split())
         same = [
@@ -252,6 +334,19 @@ class FlagEngine:
     # -- files ------------------------------------------------------------------
 
     def _file_rules(self, number: int, now: float, event: WatchEvent, out: list[Finding]) -> None:
+        for ref in event.credentials or []:
+            source, _, name = ref.rpartition("#")
+            self._once(
+                ("credential-use", ref),
+                Finding(
+                    "credential-use",
+                    RiskLevel.DANGER,
+                    f"Credential `{name}` from `{source}` written into `{event.path}`",
+                    [number],
+                ),
+                out,
+            )
+
         # F1: persistence — a network command came first
         if "persistence" in (event.reason or ""):
             for n, _t, prior in self._recent:

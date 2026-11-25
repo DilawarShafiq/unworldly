@@ -2,6 +2,21 @@
 
 All notable changes to Unworldly are documented here.
 
+## [0.10.0] - 2026-11-25
+
+Forensic readiness: when an agent incident happens, prove exactly what it did, with which credentials, under whose authority, in a record nobody can quietly alter.
+
+### Added
+- **Credential lineage.** At session start Unworldly indexes credentials found in project credential files (`.env*`, key and credentials files) and in `~/.aws/credentials`, `~/.npmrc`, `~/.pypirc`, `~/.netrc`, `~/.docker/config.json`, `~/.kube/config`, `~/.config/gh/hosts.yml`. When a command, a tool call (SDK/MCP) or a file the agent writes contains an indexed value, the event names the credential and its source (danger); a `$NAME` / `%NAME%` / `$env:NAME` reference is caution. Credential files changed during the session are re-indexed.
+- **No raw secrets on disk:** the session stores only a random salt and `{source, name, fingerprint}` per credential, and any indexed value appearing in a command, tool call or diff is replaced with `***NAME***` before saving.
+- **`unworldly credentials [session]`** lists indexed credentials (names, sources, fingerprints) and which events used them. Reports gain a Credential Lineage section; flag kind `credential-use`.
+- **Chain of custody**, signed at session start: OS user, machine, the process chain that started the recorder, the project's git identity, CI provenance (GitHub Actions, GitLab, CircleCI, Buildkite, Jenkins), agent identity and model. Shown in reports.
+- **Blast-radius flags** (danger) for production-destructive actions: Terraform/Pulumi/CDK destroy, Kubernetes and Helm deletes, AWS/GCP/Azure resource deletes, Railway/Fly/Heroku/Vercel/Supabase destroys and resets, SQL `DROP`/`TRUNCATE`/`DELETE` without `WHERE`, Redis/Mongo wipes, Prisma/Rails/Django/Alembic resets, Docker volume deletes. Commands naming prod/production are called out.
+
+### Changed
+- Custody and the credential index are signed checkpoints in the forward-secure chain, so they are tamper-resistant from the moment they are written; `verify` cross-checks the copies on the session.
+- README leads with the forensic-readiness promise and a "Forensic Readiness" section.
+
 ## [0.9.0] - 2026-11-25
 
 ### Added

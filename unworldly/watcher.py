@@ -30,11 +30,22 @@ from .command_monitor import create_command_monitor
 from .command_risk import assess_command_risk
 from .config import load_config
 from .content import ContentTracker
+from .credentials import CredentialIndex, describe_use
+from .custody import collect_custody
 from .display import agent_badge, banner, format_event, format_finding, session_summary, watch_header
 from .flags import FlagEngine
 from .hipaa_risk import assess_hipaa_command_risk, assess_hipaa_file_risk
 from .risk import assess_risk, should_ignore
-from .session import add_checkpoint, add_event, close_session, create_session, ensure_sessions_dir, save_session
+from .session import (
+    add_checkpoint,
+    add_event,
+    close_session,
+    create_session,
+    ensure_sessions_dir,
+    record_credential_index,
+    record_custody,
+    save_session,
+)
 from .signing import DEFAULT_HEARTBEAT_SECONDS
 from .types import AgentInfo, CommandInfo, EventType, RiskLevel, Session, WatchEvent
 
@@ -96,6 +107,7 @@ class _UnworldlyHandler(FileSystemEventHandler):
         hipaa: bool = False,
         on_danger: str | None = None,
         flagger: _Flagger | None = None,
+        credentials: CredentialIndex | None = None,
     ) -> None:
         super().__init__()
         self.abs_dir = abs_dir
@@ -103,8 +115,9 @@ class _UnworldlyHandler(FileSystemEventHandler):
         self.hipaa = hipaa
         self.on_danger = on_danger
         self.flagger = flagger
+        self.credentials = credentials
         self.canary_files = canary_files(abs_dir)
-        self.content = ContentTracker(abs_dir, canaries=canary_values(abs_dir))
+        self.content = ContentTracker(abs_dir, canaries=canary_values(abs_dir), credentials=credentials)
 
     def _handle(self, event: FileSystemEvent) -> None:
         # Never let one odd event (a temp file that vanished, a path on another drive)
@@ -138,10 +151,20 @@ class _UnworldlyHandler(FileSystemEventHandler):
             level, reason = RiskLevel.DANGER, "Canary file touched (decoy credentials)"
 
         change = self.content.describe(relative_path, event_type, level)
+        used_refs: list[str] | None = None
         if change.canary:
             level, reason = RiskLevel.DANGER, f"Canary credential written into {posix_path}"
+        elif change.credentials and self.credentials is not None:
+            creds = [c for c in self.credentials.used_values_by_ref(change.credentials)]
+            level, reason, used_refs = describe_use("value", creds, f"`{posix_path}` (written into the file)")
         elif change.secret:
             level, reason = RiskLevel.DANGER, f"Secret written into {posix_path} ({change.secret})"
+        # A credential file inside the project changed: index its (new) values too.
+        if self.credentials is not None and level == RiskLevel.DANGER and event_type != EventType.DELETE:
+            before = len(self.credentials)
+            self.credentials.index_file(relative_path)
+            if len(self.credentials) != before:
+                record_credential_index(self.session, self.credentials.summary())
         watch_event = WatchEvent(
             timestamp=now.isoformat(),
             type=event_type,
@@ -151,6 +174,7 @@ class _UnworldlyHandler(FileSystemEventHandler):
             before_hash=change.before_hash,
             after_hash=change.after_hash,
             diff=change.diff,
+            credentials=used_refs,
         )
 
         add_event(self.session, watch_event)
@@ -373,7 +397,17 @@ def watch(
     # Set up watchdog observer
     flagger = _Flagger(session)
     command_canaries = canary_values(abs_dir)
-    handler = _UnworldlyHandler(abs_dir, session, hipaa=hipaa_enabled, on_danger=on_danger, flagger=flagger)
+
+    # Forensic context, signed before anything is recorded: custody + credential index.
+    record_custody(session, collect_custody(abs_dir, session.agent, capture))
+    credentials = CredentialIndex(abs_dir).build()
+    record_credential_index(session, credentials.summary())
+    if len(credentials):
+        print(f"  \033[90mCredential lineage: {len(credentials)} credential(s) indexed (fingerprints only)\033[0m")
+
+    handler = _UnworldlyHandler(
+        abs_dir, session, hipaa=hipaa_enabled, on_danger=on_danger, flagger=flagger, credentials=credentials
+    )
     observer = Observer()
     observer.schedule(handler, abs_dir, recursive=True)
     outside_watched = (
@@ -393,9 +427,23 @@ def watch(
         now = datetime.now(timezone.utc)
         command_str = " ".join([cmd.executable] + cmd.args)
         level, reason = risk_result.level, risk_result.reason
+        used_refs: list[str] | None = None
         if command_canaries and used_in(command_str, command_canaries):
             level, reason = RiskLevel.DANGER, "Canary credential used in a command"
+        else:
+            by_value = credentials.used_values(command_str)
+            by_name = [c for c in credentials.referenced_names(command_str) if c not in by_value]
+            if by_value:
+                level, reason, used_refs = describe_use("value", by_value + by_name, "a command")
+            elif by_name:
+                ref_level, ref_reason, used_refs = describe_use("name", by_name, "a command")
+                if level != RiskLevel.DANGER:
+                    level, reason = ref_level, ref_reason
 
+        if used_refs or len(credentials):
+            # Never store a raw credential value: replace each with its name.
+            command_str = credentials.redact(command_str)
+            cmd.args = [credentials.redact(a) for a in cmd.args]
         watch_event = WatchEvent(
             timestamp=now.isoformat(),
             type=EventType.COMMAND,
@@ -403,6 +451,7 @@ def watch(
             risk=level,
             reason=reason,
             command=cmd,
+            credentials=used_refs,
         )
 
         add_event(session, watch_event)

@@ -31,7 +31,12 @@ def hash_event(event: WatchEvent, previous_hash: str) -> str:
         "previousHash": previous_hash,
     }
     # Fields added in 0.8 are hashed only when present, so older sessions still verify.
-    for key, value in (("beforeHash", event.before_hash), ("afterHash", event.after_hash), ("diff", event.diff)):
+    for key, value in (
+        ("beforeHash", event.before_hash),
+        ("afterHash", event.after_hash),
+        ("diff", event.diff),
+        ("credentials", event.credentials),
+    ):
         if value is not None:
             fields[key] = value
     payload = json.dumps(fields, separators=(",", ":"))
@@ -197,10 +202,20 @@ def _verify_signed(session: Session, result: VerifyResult) -> None:
         records.append((event.seq, f"Event {i}", event.hash, event.signature, event.next_public_key, event.timestamp))
     for cp in session.checkpoints:
         label = f"{cp.kind.capitalize()} checkpoint"
-        if checkpoint_digest(session.id, cp.kind, cp.timestamp) != cp.digest:
+        if checkpoint_digest(session.id, cp.kind, cp.timestamp, cp.data) != cp.digest:
             errors.append(f"{label} (seq {cp.seq}): content altered")
         records.append((cp.seq, label, cp.digest, cp.signature, cp.next_public_key, cp.timestamp))
     records.sort(key=lambda r: r[0])
+
+    # Custody and the credential index are copied onto the session for convenience; the
+    # signed checkpoint is the source of truth, so the copy must match the latest one.
+    for kind, value, label in (
+        ("custody", session.custody, "Custody record"),
+        ("credentials", session.credential_index, "Credential index"),
+    ):
+        signed = [cp.data for cp in session.checkpoints if cp.kind == kind]
+        if (signed[-1] if signed else None) != value:
+            errors.append(f"{label} does not match its signed checkpoint -- altered after recording")
 
     key = pk0
     for expected_seq, (seq, label, digest, signature, next_key, _ts) in enumerate(records):
