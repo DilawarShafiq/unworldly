@@ -235,3 +235,11 @@ def test_custody_is_recorded_and_signed(recorded: Path) -> None:
     data = json.loads(session_file.read_text(encoding="utf-8"))
     assert data["custody"]["osUser"] and data["custody"]["capture"] == "poll"
     assert any(c["kind"] == "custody" for c in data["checkpoints"])
+
+
+def test_incident_packet_round_trip(recorded: Path, tmp_path: Path) -> None:
+    packet = tmp_path / "incident.zip"
+    made = _cli("incident", "-o", str(packet), cwd=recorded)
+    assert made.returncode == 0, made.stdout + made.stderr
+    checked = _cli("incident", "--verify", str(packet), cwd=recorded)
+    assert checked.returncode == 0 and "PACKET VERIFIED" in checked.stdout, checked.stdout + checked.stderr

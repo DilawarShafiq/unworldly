@@ -332,6 +332,44 @@ def credentials(session: str | None) -> None:
     click.echo("")
 
 
+# ── incident ──────────────────────────────────────────────────────────────────
+
+
+@cli.command()
+@click.argument("session", required=False)
+@click.option("-o", "--output", default=None, help="Packet file to write (default: unworldly-incident-<id>.zip).")
+@click.option("--verify", "verify_path", default=None, help="Verify an incident packet instead of creating one.")
+def incident(session: str | None, output: str | None, verify_path: str | None) -> None:
+    """Create or verify a signed incident packet for a session.
+
+    The packet bundles the session, report, flags, verification result and credential
+    lineage, with a manifest signed by your identity key. Anyone can check it with
+    `unworldly incident --verify <file>`, without trusting the sender's machine.
+    Exit code 1 if verification fails.
+    """
+    from .incident import create_packet, verify_packet
+
+    green, red, gray, reset = "\033[32m", "\033[1;31m", "\033[90m", "\033[0m"
+    if verify_path:
+        check = verify_packet(verify_path)
+        click.echo("")
+        for msg in check.messages:
+            click.echo(f"  {green}✓{reset} {msg}")
+        for problem in check.problems:
+            click.echo(f"  {red}✗ {problem}{reset}")
+        verdict = f"{green}PACKET VERIFIED{reset}" if check.ok else f"{red}PACKET FAILED VERIFICATION{reset}"
+        click.echo(f"\n  {verdict}\n")
+        sys.exit(0 if check.ok else 1)
+
+    session_path = session or get_latest_session(os.getcwd())
+    if not session_path:
+        click.echo("No sessions found. Run `unworldly watch` first.", err=True)
+        sys.exit(1)
+    path = create_packet(session_path, output)
+    click.echo(f"\n  {green}✓ Incident packet written:{reset} {path}")
+    click.echo(f"  {gray}Anyone can verify it with: unworldly incident --verify {os.path.basename(path)}{reset}\n")
+
+
 # ── canary ────────────────────────────────────────────────────────────────────
 
 

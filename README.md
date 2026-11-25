@@ -232,6 +232,13 @@ Every 2026 agent incident ended with the same questions, asked too late. Unworld
 | **Under whose authority?** | **Chain of custody**, signed at session start: OS user and machine, the process chain that started the recording, the project's git identity, CI provenance (who triggered the run, which workflow and commit), and the agent's identity and model |
 | **Can anyone quietly alter it?** | **Forward-secure signatures** on every record: editing, deleting or reordering anything already recorded makes `verify` report TAMPERED, even for someone who later steals the machine's keys |
 
+**Hand it to someone who doesn't trust you.** `unworldly incident` writes one signed zip: the session, a report, flags, credential lineage (fingerprints only) and verification results, with a manifest signed by your identity key. The recipient runs `unworldly incident --verify packet.zip`. It checks the signature, every file hash, that nothing was added or removed, and the session's own forward-secure signatures, so even someone who re-signs a packet can't hide an edited session.
+
+```bash
+unworldly incident                      # -> unworldly-incident-<session>.zip
+unworldly incident --verify packet.zip  # exit 0 = verified, 1 = failed
+```
+
 **Honest limits:** a tool that reads a credential by itself (from its own config or an environment variable) without the value or variable name appearing on its command line can't be attributed; capture coverage is stated in every report.
 
 ## Behaviour Flags

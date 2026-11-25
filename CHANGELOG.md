@@ -2,6 +2,12 @@
 
 All notable changes to Unworldly are documented here.
 
+## [0.10.1] - 2026-11-25
+
+### Added
+- **Signed incident packets.** `unworldly incident [session] [-o file.zip]` bundles the session (and crash journal, if any), a markdown report, behaviour flags, the verification result and credential lineage (fingerprints only) with a `manifest.json` of SHA-256 hashes signed by your identity key, plus a README with verification steps.
+- **`unworldly incident --verify file.zip`** checks the manifest signature, every file hash, that no file was added or removed, and re-runs full session verification. The zip is read in memory, never extracted. Exit code 1 on failure. A packet re-signed by someone else still fails if the session inside was edited.
+
 ## [0.10.0] - 2026-11-25
 
 Forensic readiness: when an agent incident happens, prove exactly what it did, with which credentials, under whose authority, in a record nobody can quietly alter.
