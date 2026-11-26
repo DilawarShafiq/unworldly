@@ -189,6 +189,22 @@ Or put the proxy in front of a server with no code change: `unworldly mcp-proxy 
 | `mcp-proxy -- <cmd>` | Record an MCP server's tool calls |
 | `collect <spans.json>` | Import OpenTelemetry GenAI spans as a signed session |
 
+## Shell completion
+
+After installing `unworldly-recorder`, enable Click's built-in completion for your shell:
+
+```bash
+# Bash: run now, or add to ~/.bashrc for future shells
+eval "$(_UNWORLDLY_COMPLETE=bash_source unworldly)"
+
+# Zsh: run now, or add to ~/.zshrc for future shells
+eval "$(_UNWORLDLY_COMPLETE=zsh_source unworldly)"
+
+# Fish: save once; fish automatically loads this file
+mkdir -p ~/.config/fish/completions
+_UNWORLDLY_COMPLETE=fish_source unworldly > ~/.config/fish/completions/unworldly.fish
+```
+
 ## In CI (GitHub Actions)
 
 Record an agent in CI, then report on the pull request:
