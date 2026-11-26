@@ -1,8 +1,11 @@
 """Tests for cryptographic integrity (SHA-256 hash chain)."""
 
+import json
 import re
 
 from unworldly.integrity import (
+    TAMPERED,
+    VERIFIED,
     compute_session_hash,
     genesis_hash,
     get_last_hash,
@@ -10,7 +13,7 @@ from unworldly.integrity import (
     sign_event,
     verify_session,
 )
-from unworldly.session import add_event, create_session
+from unworldly.session import add_event, close_session, create_session, load_session
 from unworldly.types import EventType, RiskLevel, WatchEvent
 
 
@@ -217,3 +220,73 @@ class TestIntegrity:
             result = verify_session(session)
             assert result.valid is False
             assert result.session_hash_valid is False
+
+        def test_detect_edited_event_in_saved_log(self, tmp_path):
+            session = create_session(str(tmp_path))
+            add_event(
+                session,
+                WatchEvent(
+                    timestamp="2026-01-01T00:00:01Z",
+                    type=EventType.CREATE,
+                    path="a.ts",
+                    risk=RiskLevel.SAFE,
+                ),
+            )
+            add_event(
+                session,
+                WatchEvent(
+                    timestamp="2026-01-01T00:00:02Z",
+                    type=EventType.MODIFY,
+                    path="b.ts",
+                    risk=RiskLevel.CAUTION,
+                ),
+            )
+            filepath = close_session(session, str(tmp_path))
+            assert verify_session(load_session(filepath)).status == VERIFIED
+
+            with open(filepath, encoding="utf-8") as f:
+                data = json.load(f)
+            data["events"][0]["path"] = "tampered.ts"
+            with open(filepath, "w", encoding="utf-8") as f:
+                json.dump(data, f)
+
+            result = verify_session(load_session(filepath))
+            assert result.status == TAMPERED
+            assert result.signed
+            assert result.broken_at == 0
+            assert any("Hash mismatch" in error for error in result.errors)
+
+        def test_detect_deleted_event_in_saved_log(self, tmp_path):
+            session = create_session(str(tmp_path))
+            add_event(
+                session,
+                WatchEvent(
+                    timestamp="2026-01-01T00:00:01Z",
+                    type=EventType.CREATE,
+                    path="a.ts",
+                    risk=RiskLevel.SAFE,
+                ),
+            )
+            add_event(
+                session,
+                WatchEvent(
+                    timestamp="2026-01-01T00:00:02Z",
+                    type=EventType.MODIFY,
+                    path="b.ts",
+                    risk=RiskLevel.CAUTION,
+                ),
+            )
+            filepath = close_session(session, str(tmp_path))
+            assert verify_session(load_session(filepath)).status == VERIFIED
+
+            with open(filepath, encoding="utf-8") as f:
+                data = json.load(f)
+            del data["events"][0]
+            with open(filepath, "w", encoding="utf-8") as f:
+                json.dump(data, f)
+
+            result = verify_session(load_session(filepath))
+            assert result.status == TAMPERED
+            assert result.signed
+            assert result.broken_at == 0
+            assert any("Hash mismatch" in error or "Record sequence broken" in error for error in result.errors)
